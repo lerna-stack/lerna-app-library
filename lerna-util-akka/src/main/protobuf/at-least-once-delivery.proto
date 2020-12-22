@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// Style Guide
+// https://developers.google.com/protocol-buffers/docs/style
+
+package lerna.util.akka.protobuf.msg;
+
+message AtLeastOnceDeliveryRequest {
+  string reply_actor_path = 1;
+  Payload payload = 2;
+}
+
+message AtLeastOnceDeliveryConfirm {
+  // No field
+}
+
+message Payload {
+  bytes enclosedMessage = 1;
+  int32 serializerId = 2;
+  bytes messageManifest = 3;
+}

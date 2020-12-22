@@ -1,0 +1,17 @@
+*.class
+.idea
+target/
+
+# docker-compose
+.env
+
+# kamon java agent
+**/native/
+
+sbt-cache/
+
+# log
+/log/
+
+# Build Server Protocol
+.bsp/sbt.json
