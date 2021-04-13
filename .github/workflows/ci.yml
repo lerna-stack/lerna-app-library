@@ -40,6 +40,9 @@ jobs:
       - name: Compile
         run: sbt clean compile test:compile
 
+      - name: Check binary compartibility
+        run: sbt mimaReportBinaryIssues
+
       # https://github.com/marketplace/actions/docker-layer-caching
       - name: Pull the latest docker image
         run: docker-compose pull cassandra

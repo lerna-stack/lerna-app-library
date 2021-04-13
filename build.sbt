@@ -43,6 +43,8 @@ lazy val `root` = (project in file("."))
         // forkプロセスのstdoutをこのプロセスのstdout,stderrをこのプロセスのstderrに転送する
         // デフォルトのLoggedOutputでは、airframeやkamonが標準エラーに出力するログが[error]とプリフィクスがつき、紛らわしいためです。
         outputStrategy := Some(StdoutOutput),
+        mimaPreviousArtifacts := Set.empty, // default
+        mimaReportSignatureProblems := true,// check also generic parameters
       ),
     ),
   )
@@ -189,6 +191,7 @@ lazy val lernaDocs = lernaModule("lerna-docs")
 
 // Lerna Custom Wart of WartRemover
 lazy val lernaWartCore = lernaModule("lerna-wart-core")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .settings(lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -199,6 +202,7 @@ lazy val lernaWartCore = lernaModule("lerna-wart-core")
 
 // Lerna Testkit Library
 lazy val lernaTestKit = lernaModule("lerna-testkit")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .settings(wartremoverSettings, lernaCoverageSettings, doctestSettings)
   .settings(
@@ -233,6 +237,7 @@ lazy val lernaTests = lernaModule("lerna-tests")
   )
 
 lazy val lernaManagement = lernaModule("lerna-management")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -251,6 +256,7 @@ lazy val lernaManagement = lernaModule("lerna-management")
 
 // Lerna Log Library
 lazy val lernaLog = lernaModule("lerna-log")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -266,6 +272,7 @@ lazy val lernaLog = lernaModule("lerna-log")
 
 // Lerna Util Library
 lazy val lernaUtil = lernaModule("lerna-util")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -282,6 +289,7 @@ lazy val lernaUtil = lernaModule("lerna-util")
 
 // Lerna Akka Util Library
 lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .dependsOn(
     lernaTests % Test,
     lernaUtil,
@@ -300,6 +308,7 @@ lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
 
 // Lerna Sequence Factory Library
 lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -317,6 +326,7 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
 
 // Lerna HTTP Library
 lazy val lernaHTTP = lernaModule("lerna-http")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -335,6 +345,7 @@ lazy val lernaHTTP = lernaModule("lerna-http")
   )
 
 lazy val lernaValidation = lernaModule("lerna-validation")
+  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
