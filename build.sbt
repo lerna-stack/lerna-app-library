@@ -182,6 +182,7 @@ lazy val lernaDocs = lernaModule("lerna-docs")
     scalacOptions := Seq(),
     libraryDependencies ++= Seq(
       Dependencies.Akka.testKit,
+      Dependencies.Akka.actorTestKitTyped,
       Dependencies.Akka.streamTestKit,
       Dependencies.AkkaHTTP.httpTestKit,
       Dependencies.Airframe.airframe,
