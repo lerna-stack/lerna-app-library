@@ -7,8 +7,8 @@ import lerna.testkit.LernaTestKitBaseSpec
 final class ScalaTestWithTypedActorTestKitSpec extends ScalaTestWithTypedActorTestKit() with LernaTestKitBaseSpec {
   import ScalaTestWithTypedActorTestKitSpec.Echo
   "ScalaTestWithTypedActorTestKit" should {
-    "ActorSystem is available in the test" in {
-      val actor = system.systemActorOf(Echo(), name = "echo")
+    "testKit is available in the test" in {
+      val actor = testKit.spawn(Echo(), name = "echo")
       val probe = testKit.createTestProbe[Echo.Pong]()
       actor ! Echo.Ping("hello", probe.ref)
       probe.expectMessage(Echo.Pong("hello"))
