@@ -48,6 +48,10 @@ libraryDependencies += "com.lerna-stack" %% "lerna-validation"    % LernaVersion
 libraryDependencies += "com.lerna-stack" %% "lerna-wart-core"     % LernaVersion
 ```
 
+## Changelog
+
+You can see all the notable changes in [CHANGELOG](CHANGELOG.md).
+
 ## License
 
 lerna-app-library is released under the terms of the [Apache License Version 2.0](LICENSE).
