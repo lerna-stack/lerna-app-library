@@ -27,6 +27,7 @@ object Dependencies {
 
   object Akka {
     lazy val actor                = "com.typesafe.akka" %% "akka-actor"                 % Versions.akka
+    lazy val actorTyped           = "com.typesafe.akka" %% "akka-actor-typed"           % Versions.akka
     lazy val stream               = "com.typesafe.akka" %% "akka-stream"                % Versions.akka
     lazy val slf4j                = "com.typesafe.akka" %% "akka-slf4j"                 % Versions.akka
     lazy val testKit              = "com.typesafe.akka" %% "akka-testkit"               % Versions.akka

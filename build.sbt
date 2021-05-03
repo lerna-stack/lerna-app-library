@@ -268,6 +268,7 @@ lazy val lernaLog = lernaModule("lerna-log")
     libraryDependencies ++= Seq(
       Dependencies.SLF4J.api,
       Dependencies.Akka.slf4j,
+      Dependencies.Akka.actorTyped % Optional,
       Dependencies.Logback.classic % Optional,
     ),
   )
