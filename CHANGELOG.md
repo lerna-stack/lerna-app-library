@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v1.0.0...main
 
+### Added
+- `lerna-testkit`: Added testkit for TypedActor
+
 
 ## [v1.0.0] - 2020-12-22
 [v1.0.0]: https://github.com/lerna-stack/lerna-app-library/tree/v1.0.0
