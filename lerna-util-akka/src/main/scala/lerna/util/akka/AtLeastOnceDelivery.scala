@@ -1,7 +1,7 @@
 package lerna.util.akka
 
-import akka.actor.{ Actor, ActorRef, ActorSystem, Cancellable, NoSerializationVerificationNeeded, Props }
-import akka.pattern.ask
+import akka.actor.typed.scaladsl.adapter._
+import akka.actor.{ typed, Actor, ActorRef, ActorSystem, Cancellable, NoSerializationVerificationNeeded, Props }
 import akka.util.Timeout
 import lerna.log.AppActorLogging
 import lerna.util.time.JavaDurationConverters._
@@ -38,6 +38,7 @@ object AtLeastOnceDelivery {
       destination: ActorRef,
       message: Any,
   )(implicit requestContext: RequestContext, system: ActorSystem, timeout: Timeout): Future[Any] = {
+    import akka.pattern.ask
     val atLeastOnceDeliveryProxy = system.actorOf(AtLeastOnceDelivery.props(destination))
     atLeastOnceDeliveryProxy ? AtLeastOnceDeliveryRequest(message)(atLeastOnceDeliveryProxy)
   }
@@ -69,12 +70,62 @@ object AtLeastOnceDelivery {
     atLeastOnceDeliveryProxy ! AtLeastOnceDeliveryRequest(message)(atLeastOnceDeliveryProxy)
   }
 
+  /** Send the message asynchronously and return a [[scala.concurrent.Future]] holding the reply message.
+    * If no message is received within `timeout`, the [[scala.concurrent.Future]] holding an [[akka.pattern.AskTimeoutException]] is returned.
+    * This behavior is the same as Akka's ask pattern, but this method has some different behavior like below.
+    *
+    * The sender waits for a reply message of the sent message until a specific timeout (called `redeliver-interval`) is reached.
+    * If the sender receives no reply, the sender retries to send the same message again.
+    * This retransmission continues until another specific timeout (called `retry-timeout`) is reached.
+    * The above timeouts can be configured in your configuration file such as `reference.conf`.
+    * @param destination The destination typed actor to send
+    * @param message The message factory
+    * @param requestContext The context to be used for logging
+    * @param system The [[akka.actor.typed.ActorSystem]] to be used
+    * @param timeout The entire timeout
+    * @tparam Command Type of message to send
+    * @tparam Reply The type of reply message
+    * @return The [[scala.concurrent.Future]] holding the reply message or an exception
+    */
+  def askTo[Command, Reply](
+      destination: typed.ActorRef[Command],
+      message: (typed.ActorRef[Reply], typed.ActorRef[AtLeastOnceDeliveryConfirm.type]) => Command,
+  )(implicit requestContext: RequestContext, system: typed.ActorSystem[_], timeout: Timeout): Future[Reply] = {
+    import akka.actor.typed.scaladsl.AskPattern._
+    val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic)).toTyped
+    atLeastOnceDeliveryProxy.ask[Reply](replyTo => message(replyTo, atLeastOnceDeliveryProxy))
+  }
+
+  /** Send the message and return nothing.
+    * This method has some different behavior from Akka's tell pattern, like below.
+    *
+    * In this method, the sender actor is created, and it waits for a reply message.
+    * If the sender receives no reply, the sender retries tto send the same message gain.
+    * This retransmission continues until a specific timeout (called `retry-timeout`) is reached.
+    * The timeouts related to this method can be configured in your configuration file such as `reference.conf`.
+    *
+    * ==CAUTIONS==
+    * If you use this method, you should be careful about the below.
+    * We cannot know whether the receiver actually got the message.
+    * Moreover, we have no chance to know whether the sender continues sending the message or not.
+    * @param destination The destination typed actor to send
+    * @param message The message factory
+    * @param requestContext The context to be used for logging
+    * @param system The [[akka.actor.typed.ActorSystem]] to be used
+    * @tparam Command Type of message to send
+    */
+  def tellTo[Command](
+      destination: typed.ActorRef[Command],
+      message: typed.ActorRef[AtLeastOnceDeliveryConfirm.type] => Command,
+  )(implicit requestContext: RequestContext, system: typed.ActorSystem[_]): Unit = {
+    val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic))
+    atLeastOnceDeliveryProxy ! message(atLeastOnceDeliveryProxy)
+  }
+
   // Actor's protocol
   private[akka] sealed trait AtLeastOnceDeliveryCommand
 
-  private[akka] case object AtLeastOnceDeliveryConfirm
-      extends AtLeastOnceDeliveryCommand
-      with AtLeastOnceDeliverySerializable
+  case object AtLeastOnceDeliveryConfirm extends AtLeastOnceDeliveryCommand with AtLeastOnceDeliverySerializable
 
   /** A message that holds the original message and the destination actor to send a confirmation
     *
