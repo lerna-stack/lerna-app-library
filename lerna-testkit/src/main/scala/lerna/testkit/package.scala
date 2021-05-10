@@ -8,7 +8,7 @@ package lerna
   * Some classes require additional dependencies.
   * For more details, see the Lerna project page.
   *
-  *  - [[lerna.testkit.akka]]: test kits for Akka classic
+  *  - [[lerna.testkit.akka]]: test kits for Akka
   *  - [[lerna.testkit.airframe]]: test kits for Airframe
   *  - [[lerna.testkit.wiremock]]: test kits for WireMock
   */

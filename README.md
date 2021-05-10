@@ -11,7 +11,7 @@ A library that is useful for building applications that run on Lerna Stack.
 - [**lerna-management**](doc/lerna-management.md)
     - *Lerna Management* library provides management related features
 - [**lerna-testkit**](doc/lerna-testkit.md)
-    - *Lerna TestKit* library provides testkits for [Akka Classic], [Airframe], and [WireMock]
+    - *Lerna TestKit* library provides testkits for [Akka], [Airframe], and [WireMock]
 - [**lerna-util**](doc/lerna-util.md)
     - *Lerna Util* library provides some utilities for Encryption, Typed Equals, and so on
 - [**lerna-util-akka**](doc/lerna-util-akka.md)
@@ -24,6 +24,7 @@ A library that is useful for building applications that run on Lerna Stack.
     - *Lerna Wart Core* library provides custom warts for [WartRemover]
 
 [Accord]: http://wix.github.io/accord/
+[Akka]: https://doc.akka.io/docs/akka/current/
 [Akka Classic]: https://doc.akka.io/docs/akka/current/index-classic.html
 [Airframe]: https://wvlet.org/airframe/
 [WireMock]: http://wiremock.org/
@@ -46,6 +47,10 @@ libraryDependencies += "com.lerna-stack" %% "lerna-util-sequence" % LernaVersion
 libraryDependencies += "com.lerna-stack" %% "lerna-validation"    % LernaVersion
 libraryDependencies += "com.lerna-stack" %% "lerna-wart-core"     % LernaVersion
 ```
+
+## Changelog
+
+You can see all the notable changes in [CHANGELOG](CHANGELOG.md).
 
 ## License
 
