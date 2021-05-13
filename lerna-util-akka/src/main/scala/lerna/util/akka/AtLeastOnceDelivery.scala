@@ -39,7 +39,7 @@ object AtLeastOnceDelivery {
       message: Any,
   )(implicit requestContext: RequestContext, system: ActorSystem, timeout: Timeout): Future[Any] = {
     val atLeastOnceDeliveryProxy = system.actorOf(AtLeastOnceDelivery.props(destination))
-    atLeastOnceDeliveryProxy ? message
+    atLeastOnceDeliveryProxy ? AtLeastOnceDeliveryRequest(message)(atLeastOnceDeliveryProxy)
   }
 
   /** Send the message and return nothing.
@@ -66,7 +66,7 @@ object AtLeastOnceDelivery {
       message: Any,
   )(implicit requestContext: RequestContext, system: ActorSystem, sender: ActorRef = Actor.noSender): Unit = {
     val atLeastOnceDeliveryProxy = system.actorOf(AtLeastOnceDelivery.props(destination))
-    atLeastOnceDeliveryProxy ! message
+    atLeastOnceDeliveryProxy ! AtLeastOnceDeliveryRequest(message)(atLeastOnceDeliveryProxy)
   }
 
   // Actor's protocol
@@ -146,7 +146,7 @@ private[akka] final class AtLeastOnceDelivery(destination: ActorRef)(implicit re
       self ! SendRequest
 
     case SendRequest =>
-      destination.tell(AtLeastOnceDeliveryRequest(message), replyTo.actorRef)
+      destination.tell(message, replyTo.actorRef)
 
     case AtLeastOnceDeliveryConfirm =>
       context.stop(self)
