@@ -23,7 +23,7 @@ You can use this class like below.
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
-import org.scalatest._
+import org.scalatt._
 
 final class MySpec extends ScalaTestWithTypedActorTestKit() with WordSpecLike with Matchers {
   import MySpec.Echo
