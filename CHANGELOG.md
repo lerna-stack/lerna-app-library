@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `lerna-testkit`: Added testkit for TypedActor
+- `lerna-log`: Added Logger for TypedActor
 
 
 ## [v1.0.0] - 2020-12-22

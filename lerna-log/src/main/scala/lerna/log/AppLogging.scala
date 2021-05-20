@@ -1,6 +1,8 @@
 package lerna.log
 
-import akka.actor.{ ActorRef, ActorSystem, DiagnosticActorLogging }
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.{ typed, ActorRef, ActorSystem, DiagnosticActorLogging }
 import akka.event.{ DiagnosticLoggingAdapter, LogMarker }
 import org.slf4j.helpers.MessageFormatter
 import org.slf4j.{ Logger, LoggerFactory, MDC }
@@ -17,6 +19,14 @@ trait AppLogging {
   */
 trait AppActorLogging extends DiagnosticActorLogging {
   lazy val logger: AppLogger = new CommonActorLogger(log, context.system, getClass, self)
+}
+
+trait AppTypedActorLogging { // Made a trait so that the actor's class can be referenced in this
+  def withLogger[T](factory: AppLogger => Behavior[T]): Behavior[T] = Behaviors.setup[T](context => {
+    val logger    = LoggerFactory.getLogger(this.getClass)
+    val appLogger = new TypedActorLogger(logger, context.self)
+    factory(appLogger)
+  })
 }
 
 /** A trait that defines logging APIs
@@ -150,14 +160,26 @@ class CommonLogger(log: Logger) extends AppLogger {
     }
   }
 
-  private[this] def decorate(logContext: LogContext)(logOut: => Unit): Unit = {
+  private[log] def decorate(logContext: LogContext)(logOut: => Unit): Unit = {
+    decorate(logContext.mdc)(logOut)
+  }
+
+  private[log] def decorate(mdc: Map[String, String])(logOut: => Unit): Unit = {
     try {
       import collection.JavaConverters._
-      MDC.setContextMap(logContext.mdc.asJava)
+      MDC.setContextMap(mdc.asJava)
       logOut
     } finally {
       MDC.clear()
     }
+  }
+}
+
+/** An implementation of [[AppLogger]] that is especially for Akka Typed Actor
+  */
+class TypedActorLogger(log: Logger, logSource: typed.ActorRef[Nothing]) extends CommonLogger(log) with AppLogger {
+  override def decorate(logContext: LogContext)(logOut: => Unit): Unit = {
+    decorate(logContext.mdc + ("actorPath" -> logSource.path.toString))(logOut)
   }
 }
 
