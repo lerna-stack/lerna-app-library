@@ -9,8 +9,8 @@ object Dependencies {
     val akka                = "2.6.8"
     val akkaHTTP            = "10.1.12"
     val cassandraDriverCore = "3.7.1"
-    val kamonCore           = "1.1.6"
-    val kamonSystemMetrics  = "1.0.1"
+    val kamonCore           = "2.1.18"
+    val kamonSystemMetrics  = "2.1.18"
     val logbackClassic      = "1.2.3"
     // Use ScalaTest & Scalactic 3.0.x for backward compatibility.
     val scalaTest      = "3.0.9"

@@ -5,12 +5,13 @@ import akka.pattern.retry
 import com.typesafe.config.{ Config, ConfigFactory }
 import kamon.Kamon
 import kamon.metric.MeasurementUnit
-import kamon.system.SystemMetrics
+import kamon.tag.TagSet
 import lerna.management.LernaManagementActorBaseSpec
 import lerna.util.tenant.Tenant
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.time._
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object MetricsImplSpec {
@@ -19,35 +20,33 @@ object MetricsImplSpec {
       .parseString(s"""
                                |kamon {
                                |  metric {
-                               |    tick-interval = 3 seconds
+                               |    tick-interval = 10 seconds
                                |  }
                                |}
                                |lerna.management.stats {
                                |  metrics-reporter {
                                |
                                |    /system-metrics/jvm-memory/heap/used {
-                               |      name = "jvm.memory"
+                               |      name = "jvm.memory.used"
                                |      tags {
-                               |        component = "system-metrics"
-                               |        measure   = "used"
-                               |        segment   = "heap"
+                               |        component = "jvm"
+                               |        region    = "heap"
                                |      }
                                |    }
                                |
                                |    /system-metrics/jvm-memory/heap/max {
-                               |      name = "jvm.memory"
+                               |      name = "jvm.memory.max"
                                |      tags {
-                               |        component = "system-metrics"
-                               |        measure   = "max"
-                               |        segment   = "heap"
+                               |        component = "jvm"
+                               |        region    = "heap"
                                |      }
                                |    }
                                |
                                |    /system-metrics/host/network/bytes {
-                               |      name = "host.network.bytes"
+                               |      name = "host.network.data.read"
                                |      tags {
-                               |        component = "system-metrics"
-                               |        direction = "transmitted"
+                               |        component = "host"
+                               |        interface = "eth0"
                                |      }
                                |    }
                                |
@@ -71,6 +70,7 @@ object MetricsImplSpec {
   Array(
     "org.wartremover.contrib.warts.MissingOverride",
     "org.wartremover.warts.OptionPartial",
+    "lerna.warts.Awaits",
   ),
 )
 class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsImplSpec", MetricsImplSpec.config)) {
@@ -88,15 +88,13 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    Kamon.reconfigure(system.settings.config)
-    Kamon.addReporter(metricsImpl)
-    SystemMetrics.startCollecting()
+    metricsImpl.registerToKamon()
+    Kamon.init(MetricsImplSpec.config)
   }
 
   override def afterAll(): Unit = {
     try {
-      Kamon.stopAllReporters()
-      SystemMetrics.stopCollecting()
+      Await.result(Kamon.stop(), scaled(10.seconds))
     } finally {
       super.afterAll()
     }
@@ -165,7 +163,7 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
         retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
         timeout,
       ) { metrics =>
-        expect(metrics.value.toLong > 0)
+        expect(metrics.value.toDouble > 0)
       }
     }
 
@@ -185,7 +183,7 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
       import MetricsMultiTenantSupport._
       val histogram = Kamon
         .histogram("name_tenant", MeasurementUnit.none)
-        .refine(Map("component" -> "test").withTenant(tenant1))
+        .withTags(TagSet.from(Map("component" -> "test")).withTenant(tenant1))
 
       histogram.record(value)
 
