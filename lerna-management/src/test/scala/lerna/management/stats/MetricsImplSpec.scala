@@ -26,6 +26,34 @@ object MetricsImplSpec {
                                |lerna.management.stats {
                                |  metrics-reporter {
                                |
+                               |    /lerna/counters/example {
+                               |      name = "lerna.counters.example"
+                               |      tags {
+                               |        category = "counter-example"
+                               |      }
+                               |    }
+                               |
+                               |    /lerna/gauges/example {
+                               |      name = "lerna.gauges.example"
+                               |      tags {
+                               |        category = "gauge-example"
+                               |      }
+                               |    }
+                               |
+                               |    /lerna/histograms/example {
+                               |      name = "lerna.histograms.example"
+                               |      tags {
+                               |        category = "histogram-example"
+                               |      }
+                               |    }
+                               |
+                               |    /lerna/range-samplers/example {
+                               |      name = "lerna.range-samplers.example"
+                               |      tags {
+                               |        category = "range-sampler-example"
+                               |      }
+                               |    }
+                               |
                                |    /system-metrics/jvm-memory/heap/used {
                                |      name = "jvm.memory.used"
                                |      tags {
@@ -135,6 +163,90 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
     val timeout  = Timeout(scaled(Span(30, Seconds)))
     val attempts = 30
     val delay    = scaled(1000.millis)
+
+    "collect metric values of counters as Long values" in {
+      val name     = "lerna/counters/example"
+      val kamonKey = "lerna.counters.example"
+      val key      = MetricsKey(name, None)
+      val tags = TagSet.from(
+        Map(
+          "category" -> "counter-example",
+        ),
+      )
+      val counter = Kamon.counter(kamonKey).withTags(tags)
+
+      counter.increment(123)
+      whenReady(
+        retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
+        timeout,
+      ) { metrics =>
+        expect(metrics.value.toLong === 123L)
+      }
+    }
+
+    "collect metric values of gauges as Double values" in {
+      val name     = "lerna/gauges/example"
+      val kamonKey = "lerna.gauges.example"
+      val key      = MetricsKey(name, None)
+      val tags = TagSet.from(
+        Map(
+          "category" -> "gauge-example",
+        ),
+      )
+      val gauge = Kamon.gauge(kamonKey).withTags(tags)
+
+      gauge.update(1.23)
+      whenReady(
+        retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
+        timeout,
+      ) { metrics =>
+        expect(metrics.value.toDouble === 1.23)
+      }
+    }
+
+    "collect average metric values of histograms as Long values" in {
+      val name     = "lerna/histograms/example"
+      val kamonKey = "lerna.histograms.example"
+      val key      = MetricsKey(name, None)
+      val tags = TagSet.from(
+        Map(
+          "category" -> "histogram-example",
+        ),
+      )
+      val histogram = Kamon.histogram(kamonKey).withTags(tags)
+
+      histogram.record(1)
+      histogram.record(4)
+      whenReady(
+        retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
+        timeout,
+      ) { metrics =>
+        val expectedValue: Long = (1 + 4) / 2
+        expect(metrics.value.toLong === expectedValue)
+      }
+    }
+
+    "collect metric values of rangeSamplers as Long values" in {
+      val name     = "lerna/range-samplers/example"
+      val kamonKey = "lerna.range-samplers.example"
+      val key      = MetricsKey(name, None)
+      val tags = TagSet.from(
+        Map(
+          "category" -> "range-sampler-example",
+        ),
+      )
+      val rangeSampler = Kamon.rangeSampler(kamonKey).withTags(tags)
+
+      rangeSampler.increment(3)
+      rangeSampler.increment(2)
+      whenReady(
+        retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
+        timeout,
+      ) { metrics =>
+        val expectedValue: Long = 5
+        expect(metrics.value.toLong === expectedValue)
+      }
+    }
 
     "jvm_heap_used" in {
       val key = MetricsKey("system-metrics/jvm-memory/heap/used", None)
