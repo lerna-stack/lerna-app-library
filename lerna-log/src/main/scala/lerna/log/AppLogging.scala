@@ -166,7 +166,7 @@ class CommonLogger(log: Logger) extends AppLogger {
 
   private[log] def decorate(mdc: Map[String, String])(logOut: => Unit): Unit = {
     try {
-      import collection.JavaConverters._
+      import scala.jdk.CollectionConverters._
       MDC.setContextMap(mdc.asJava)
       logOut
     } finally {

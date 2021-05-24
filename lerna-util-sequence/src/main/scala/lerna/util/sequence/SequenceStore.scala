@@ -8,7 +8,7 @@ import lerna.log.AppActorLogging
 import lerna.util.sequence.FutureConverters.ListenableFutureConverter
 import lerna.util.tenant.Tenant
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
 private[sequence] object SequenceStore {

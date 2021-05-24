@@ -94,7 +94,7 @@ private[stats] class MetricsImpl(system: ActorSystem, tenants: Set[Tenant]) exte
   private def readSettings(config: Config): Set[SettingItem] = {
     val root = config.getConfig("lerna.management.stats.metrics-reporter")
 
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val items = root.root().entrySet().asScala.toSet
 
     items.flatMap { item =>
