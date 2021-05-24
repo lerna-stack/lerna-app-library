@@ -52,6 +52,10 @@ libraryDependencies += "com.lerna-stack" %% "lerna-wart-core"     % LernaVersion
 
 You can see all the notable changes in [CHANGELOG](CHANGELOG.md).
 
+## Migration guide
+
+You can see the migration guide in [migration-guide.md](doc/migration-guide.md).
+
 ## License
 
 lerna-app-library is released under the terms of the [Apache License Version 2.0](LICENSE).
