@@ -142,7 +142,7 @@ private[akka] final class AtLeastOnceDelivery(destination: ActorRef)(implicit re
 
   private def accepted(replyTo: ReplyTo, message: Any, retryScheduler: Cancellable): Receive = {
     case RetrySendRequest =>
-      logger.info(s"再送します: destination = $destination")
+      logger.info(s"再送します: destination = ${destination.toString}")
       self ! SendRequest
 
     case SendRequest =>
@@ -155,6 +155,6 @@ private[akka] final class AtLeastOnceDelivery(destination: ActorRef)(implicit re
     case RetryTimeout =>
       context.stop(self)
       retryScheduler.cancel()
-      logger.info(s"到達確認ができず、${retryTimeout} 経過したため再送を中止します")
+      logger.info(s"到達確認ができず、${retryTimeout.toString} 経過したため再送を中止します")
   }
 }

@@ -30,7 +30,9 @@ class EnumJsonFormat[T <: scala.Enumeration](enu: T) extends RootJsonFormat[T#Va
     json match {
       case JsString(txt) if enu.values.exists(_.toString === txt) => enu.withName(txt)
       case somethingElse =>
-        throw DeserializationException(s"Expected one of (${enu.values.mkString(",")}) instead of $somethingElse")
+        throw DeserializationException(
+          s"Expected one of (${enu.values.mkString(",")}) instead of ${somethingElse.toString}",
+        )
     }
   }
 }

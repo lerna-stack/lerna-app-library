@@ -106,7 +106,7 @@ class CassandraSequenceFactorySpec
       val futures = Future.sequence(for {
         i <- 1 to numberOfValues
       } yield {
-        val sequenceSubId = s"test-$i"
+        val sequenceSubId = s"test-${i.toString}"
         sequenceFactory.nextId(sequenceSubId)
       })
 

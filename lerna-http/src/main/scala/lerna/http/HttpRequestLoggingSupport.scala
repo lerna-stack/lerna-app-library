@@ -47,7 +47,7 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
 
     val start = System.nanoTime()
     logger.info(
-      s"Request: [${req.method.value}] ${req.uri}, RequestHeaders: ${req.getHeaders.toString}, RequestBody: ${maskLog(req.entity.toString)}",
+      s"Request: [${req.method.value}] ${req.uri.toString}, RequestHeaders: ${req.getHeaders.toString}, RequestBody: ${maskLog(req.entity.toString)}",
     )
 
     Future
@@ -55,16 +55,16 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
         Seq(
           Http().singleRequest(req, settings = generateRequestSetting(useProxy)).flatMap(_.toStrict(timeout)),
           after(timeout, system.scheduler)(
-            Future.failed(new TimeoutException(s"Request timed out after [$timeout]")),
+            Future.failed(new TimeoutException(s"Request timed out after [${timeout.toString}]")),
           ),
         ),
       ).andThen {
         case Success(res) =>
           logger.info(
-            s"Response: ${req.uri} : ${res.status}, ${latencyAndScope(req, start)}, ResponseHeaders: ${res.getHeaders}, ResponseBody: ${maskLog(res.entity.toString)}",
+            s"Response: ${req.uri.toString} : ${res.status.toString}, ${latencyAndScope(req, start)}, ResponseHeaders: ${res.getHeaders.toString}, ResponseBody: ${maskLog(res.entity.toString)}",
           )
         case Failure(exception) =>
-          logger.warn(exception, s"Response: ${req.uri} : failed, ${latencyAndScope(req, start)}")
+          logger.warn(exception, s"Response: ${req.uri.toString} : failed, ${latencyAndScope(req, start)}")
       }
   }
 
@@ -74,6 +74,6 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
   ): String = {
 
     val latency = (System.nanoTime() - startTime) / 1000000
-    s"latency: $latency ms, scope: $scope"
+    s"latency: ${latency.toString} ms, scope: $scope"
   }
 }

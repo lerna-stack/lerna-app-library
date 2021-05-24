@@ -40,13 +40,17 @@ private[akka] final class AtLeastOnceDeliverySerializer(val system: ExtendedActo
   override def manifest(o: AnyRef): String = o match {
     case message: AtLeastOnceDeliverySerializable => serializableToManifest(message)
     case _ =>
-      throw new IllegalArgumentException(s"Can't serialize object of type ${o.getClass} in [${getClass.getName}]")
+      throw new IllegalArgumentException(
+        s"Can't serialize object of type ${o.getClass.toString} in [${getClass.getName}]",
+      )
   }
 
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case message: AtLeastOnceDeliverySerializable => serializableToBinary(message)
     case _ =>
-      throw new IllegalArgumentException(s"Can't serialize object of type ${o.getClass} in [${getClass.getName}]")
+      throw new IllegalArgumentException(
+        s"Can't serialize object of type ${o.getClass.toString} in [${getClass.getName}]",
+      )
   }
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = {
