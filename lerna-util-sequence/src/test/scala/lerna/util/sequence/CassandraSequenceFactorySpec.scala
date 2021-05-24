@@ -103,14 +103,14 @@ class CassandraSequenceFactorySpec
 
       val numberOfValues = 100
 
-      val futures = for {
+      val futures = Future.sequence(for {
         i <- 1 to numberOfValues
       } yield {
         val sequenceSubId = s"test-$i"
         sequenceFactory.nextId(sequenceSubId)
-      }
+      })
 
-      whenReady(Future.sequence(futures)) { results =>
+      whenReady(futures) { results =>
         expect {
           results.forall(_ === BigInt(1)) // 初項は node-id
 
@@ -133,14 +133,14 @@ class CassandraSequenceFactorySpec
 
       val numberOfValues = 110
 
-      val futures = for {
+      val futures = Future.sequence(for {
         _ <- 1 to numberOfValues
       } yield {
         Thread.sleep(10) // 警告が出過ぎるのを抑止
         sequenceFactory.nextId()
-      }
+      })
 
-      whenReady(Future.sequence(futures)) { results =>
+      whenReady(futures) { results =>
         expect {
           results.lastOption === Option(BigInt(991)) // 1 + 9 * 110
         }
