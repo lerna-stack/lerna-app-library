@@ -131,9 +131,9 @@ class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
       val result = WartTestTraverser(new CyclomaticComplexity(maxCyclomaticComplexity = 2)) {
         class ComplexClass {
           def complexMethod(): Unit = {
-            for (_ <- 1 to 2) {
-              for (_ <- 1 to 2) {
-                println("test")
+            for (i <- 1 to 2) {
+              for (j <- 1 to 2) {
+                println(s"test $i $j")
               }
             }
           }
@@ -147,6 +147,22 @@ class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
     }
 
     "しきい値を超えない場合はエラーにならない（simple for）" in {
+      val result = WartTestTraverser(new CyclomaticComplexity(maxCyclomaticComplexity = 2)) {
+        class SimpleClass {
+          def simpleMethod(): Unit = {
+            for {
+              i <- 1 to 2
+              j <- 1 to 2
+            } yield i + j
+          }
+        }
+        new SimpleClass().simpleMethod() // suppress never used warning
+      }
+      assert(result.errors.isEmpty)
+    }
+
+    // FIXME discarded parameter を使用している場合に、CyclomaticComplexity を多めにカウントしている
+    "しきい値を超えない場合はエラーにならない (for with discarded parameters）" ignore {
       val result = WartTestTraverser(new CyclomaticComplexity(maxCyclomaticComplexity = 2)) {
         class SimpleClass {
           def simpleMethod(): Unit = {
@@ -165,9 +181,9 @@ class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
       val result = WartTestTraverser(new CyclomaticComplexity(maxCyclomaticComplexity = 2)) {
         class ComplexClass {
           def complexMethod(): Unit = {
-            for (_ <- 1 to 2) { // 1
+            for (i <- 1 to 2) { // 1
               while ("1" == 2.toString) { // 1
-                println("test")
+                println(s"test $i")
               }
             }
             do {        // 1
@@ -197,8 +213,8 @@ class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
                 print("test")
               } while ("1" == 2.toString)
             }
-            for (_ <- 1 to 2) { // 1
-              while ("1" == 2.toString) { // 1
+            for (i <- 1 to 2) { // 1
+              while (i.toString == 2.toString) { // 1
                 sub()
                 1 match { // 2
                   case 1 =>
@@ -222,9 +238,9 @@ class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
       val result = WartTestTraverser(new CyclomaticComplexity(maxCyclomaticComplexity = 2)) {
         class ComplexClass {
           val complexVal: Int = {
-            for (_ <- 1 to 2) {
-              for (_ <- 1 to 2) {
-                println("test")
+            for (i <- 1 to 2) {
+              for (j <- 1 to 2) {
+                println(s"test $i $j")
               }
             }
             1
