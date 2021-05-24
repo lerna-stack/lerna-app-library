@@ -53,7 +53,7 @@ final class EqualsSupportSpec extends LernaTestKitBaseSpec {
       val e1 = intercept[AssertionError] {
         expect { value1 === "def" }
       }
-      val message1 = e1.getMessage.lines.toSeq
+      val message1 = e1.getMessage.linesIterator.toSeq
       message1 shouldBe Seq(
         "assertion failed ",
         """""",
@@ -66,7 +66,7 @@ final class EqualsSupportSpec extends LernaTestKitBaseSpec {
       val e2 = intercept[AssertionError] {
         expect { nullValue === "def" }
       }
-      val message2 = e2.getMessage.lines.toSeq
+      val message2 = e2.getMessage.linesIterator.toSeq
       message2 shouldBe Seq(
         """assertion failed """,
         "",
