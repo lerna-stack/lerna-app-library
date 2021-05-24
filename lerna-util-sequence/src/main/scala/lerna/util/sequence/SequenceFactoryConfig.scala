@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import lerna.util.tenant.Tenant
 import lerna.util.time.JavaDurationConverters._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
 
 private[sequence] final class SequenceFactoryConfig(root: Config) {
@@ -39,7 +39,7 @@ private[sequence] final class SequenceFactoryConfig(root: Config) {
 class SequenceFactoryCassandraConfig(baseConfig: Config)(implicit tenant: Tenant) {
   private[this] val cassandraConfig = baseConfig.getConfig(s"cassandra.tenants.${tenant.id}")
 
-  val cassandraContactPoints: Seq[String] = cassandraConfig.getStringList("contact-points").asScala
+  val cassandraContactPoints: Seq[String] = cassandraConfig.getStringList("contact-points").asScala.toSeq
 
   val cassandraKeyspace: String = cassandraConfig.getString("keyspace")
 
