@@ -23,7 +23,7 @@ trait RequestLogDirective extends GenTraceIDDirective with AppLogging {
     */
   def logRequestResultDirective(implicit logContext: LogContext): Directive0 =
     extractRequest flatMap { req =>
-      mapRouteResult { routeResult ⇒
+      mapRouteResult { routeResult =>
         routeResult match {
           case RouteResult.Complete(res) =>
             logger.info(
