@@ -21,8 +21,10 @@ import kamon.Kamon
 val system: ActorSystem = ???
 val tenants: Set[Tenant] = ???
 
+// We have to instantiate `Metrics` before calling `Kamon.init`.
 val metrics = Metrics(system, tenants)
-Kamon.init()
+// Substitute the argument of `Kamon.init` if we have another config we want to use.
+Kamon.init(system.settings.config)
 ```
 
 #### The value of `MetricsValue` may be changed
@@ -46,7 +48,7 @@ val metrics: Metrics = ???
 
 // Suppose we got a gauge metric value.
 val gaugeMetricValue: Future[Option[MetricsValue]] =
-  metrics.getMetrics(MetricsKey("/system-metrics/jvm-memory/heap/max", None))
+  metrics.getMetrics(MetricsKey("system-metrics/jvm-memory/heap/max", None))
 
 // We have to reconcile the returned value as we like.
 // We convert the string value to Long via Double in this example.
