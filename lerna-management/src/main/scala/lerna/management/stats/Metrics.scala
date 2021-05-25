@@ -21,9 +21,6 @@ trait Metrics extends MetricReporter with AppLogging {
     */
   def getMetrics(key: MetricsKey): Future[Option[MetricsValue]]
 
-  /** Register this module to Kamon */
-  def registerToKamon(): Unit
-
 }
 
 /** An object that provides metrics reporting features for [[kamon]]

@@ -30,12 +30,10 @@ private[stats] class MetricsImpl(system: ActorSystem, tenants: Set[Tenant]) exte
 
   implicit lazy val timeout: Timeout = Timeout(3.seconds)
 
+  Kamon.registerModule(kamonModuleName, this)
+
   override def getMetrics(key: MetricsKey): Future[Option[MetricsValue]] = {
     (actor ? GetMetrics(key)).mapTo[Option[MetricsValue]]
-  }
-
-  override def registerToKamon(): Unit = {
-    Kamon.registerModule(kamonModuleName, this)
   }
 
   override def reportPeriodSnapshot(snapshot: PeriodSnapshot): Unit = {

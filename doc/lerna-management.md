@@ -21,9 +21,8 @@ val system = ActorSystem("metrics-example")
 val exampleTenant = new Tenant { def id = "example" }
 val tenants: Set[Tenant] = Set(exampleTenant)
 
-// We have to register the instance of `Metrics` before calling `Kamon.init`.
+// We have to instantiate `Metrics` before calling `Kamon.init`.
 val metrics = Metrics(system, tenants)
-metrics.registerToKamon()
 Kamon.init()
 
 // We can get metrics collected by Kamon via `Metrics.getMetrics`.

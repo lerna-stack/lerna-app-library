@@ -4,11 +4,13 @@
 
 ### lerna-management
 
-#### There is a new registration method `Metrics.registerToKamon`
+#### Initialization procedures are changed
 
-Since *lerna-management* will use *Kamon 2.x*,
-we have to use a new registration method instead.
-Be aware that we have to call `Metrics.registerToKamon` before calling `Kamon.init`.
+Since *lerna-management* uses *Kamon 2.x*,
+we have to change initialization procedures.
+We should use `Kamon.init` to initialize *Kamon*.
+We can see more details in [Migrating from 1.x to 2.0 | Kamon Documentation | Kamon](https://kamon.io/docs/latest/guides/migration/from-1.x-to-2.0/#there-is-a-new-kamoninit-method).
+Be aware that we have to instantiate `Metrics` before calling `Kamon.init`.
 
 ```mdoc mdoc:compile-only
 import lerna.management.stats.Metrics
@@ -18,8 +20,8 @@ import kamon.Kamon
 
 val system: ActorSystem = ???
 val tenants: Set[Tenant] = ???
+
 val metrics = Metrics(system, tenants)
-metrics.registerToKamon()
 Kamon.init()
 ```
 

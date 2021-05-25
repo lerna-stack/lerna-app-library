@@ -88,7 +88,6 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    metricsImpl.registerToKamon()
     Kamon.init(MetricsImplSpec.config)
   }
 
