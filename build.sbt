@@ -167,7 +167,13 @@ lazy val scalapbSettings = Seq(
 
 // Mima Previous Artifacts
 lazy val lernaMimaPreviousArtifacts: Def.Initialize[Set[ModuleID]] = Def.setting {
-  previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet
+  val previousStableVersionOpt =
+    if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=2.13"))) {
+      previousStableVersion.value.filterNot(VersionNumber(_).matchesSemVer(SemanticSelector("<2.0.0")))
+    } else {
+      previousStableVersion.value
+    }
+  previousStableVersionOpt.map(organization.value %% moduleName.value % _).toSet
 }
 
 def lernaModule(name: String): Project =
