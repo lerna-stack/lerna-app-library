@@ -1,7 +1,7 @@
 package lerna.management.stats
 
 import akka.actor.ActorSystem
-import kamon.MetricReporter
+import kamon.module.MetricReporter
 import lerna.log.AppLogging
 import lerna.util.tenant.Tenant
 
@@ -10,7 +10,7 @@ import scala.concurrent.Future
 /** A trait that provides metric reporting feature for [[kamon]]
   *
   * ==Overview==
-  * The trait can be used for [[kamon]] since it extends [[kamon.MetricReporter]].
+  * The trait can be used for [[kamon]] since it extends [[kamon.module.MetricReporter]].
   */
 trait Metrics extends MetricReporter with AppLogging {
 
