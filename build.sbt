@@ -1,3 +1,5 @@
+import sbt.Def
+
 import scala.util.Try
 
 name := "lerna-app-library"
@@ -155,6 +157,11 @@ lazy val scalapbSettings = Seq(
   wartremoverExcluded += sourceManaged.value,
 )
 
+// Mima Previous Artifacts
+lazy val lernaMimaPreviousArtifacts: Def.Initialize[Set[ModuleID]] = Def.setting {
+  previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet
+}
+
 def lernaModule(name: String): Project =
   Project(id = name, base = file(name))
 
@@ -192,7 +199,7 @@ lazy val lernaDocs = lernaModule("lerna-docs")
 
 // Lerna Custom Wart of WartRemover
 lazy val lernaWartCore = lernaModule("lerna-wart-core")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .settings(lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -203,7 +210,7 @@ lazy val lernaWartCore = lernaModule("lerna-wart-core")
 
 // Lerna Testkit Library
 lazy val lernaTestKit = lernaModule("lerna-testkit")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .settings(wartremoverSettings, lernaCoverageSettings, doctestSettings)
   .settings(
@@ -239,7 +246,7 @@ lazy val lernaTests = lernaModule("lerna-tests")
   )
 
 lazy val lernaManagement = lernaModule("lerna-management")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -258,7 +265,7 @@ lazy val lernaManagement = lernaModule("lerna-management")
 
 // Lerna Log Library
 lazy val lernaLog = lernaModule("lerna-log")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -275,7 +282,7 @@ lazy val lernaLog = lernaModule("lerna-log")
 
 // Lerna Util Library
 lazy val lernaUtil = lernaModule("lerna-util")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -292,7 +299,7 @@ lazy val lernaUtil = lernaModule("lerna-util")
 
 // Lerna Akka Util Library
 lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .dependsOn(
     lernaTests % Test,
     lernaUtil,
@@ -311,7 +318,7 @@ lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
 
 // Lerna Sequence Factory Library
 lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -329,7 +336,7 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
 
 // Lerna HTTP Library
 lazy val lernaHTTP = lernaModule("lerna-http")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -348,7 +355,7 @@ lazy val lernaHTTP = lernaModule("lerna-http")
   )
 
 lazy val lernaValidation = lernaModule("lerna-validation")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
