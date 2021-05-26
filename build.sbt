@@ -4,8 +4,15 @@ import scala.util.Try
 
 name := "lerna-app-library"
 
+lazy val scala212               = "2.12.12"
+lazy val scala213               = "2.13.4"
+lazy val supportedScalaVersions = List(scala213, scala212)
+
 lazy val `root` = (project in file("."))
-  .settings(publish / skip := true)
+  .settings(
+    crossScalaVersions := Nil,
+    publish / skip := true,
+  )
   .enablePlugins(ScalaUnidocPlugin)
   .settings(unidocSettings)
   .disablePlugins(ProtocPlugin)
@@ -26,13 +33,14 @@ lazy val `root` = (project in file("."))
     inThisBuild(
       List(
         version := "1.0.0",
-        scalaVersion := "2.13.4",
+        scalaVersion := scala213,
         scalacOptions ++= Seq(
           "-deprecation",
           "-feature",
           "-unchecked",
           "-Xlint",
         ),
+        crossScalaVersions := supportedScalaVersions,
         scalacOptions in lernaWartCore in Test -= "-Xlint", // test:compile が未使用チェックに引っかかるため無効化
         scalacOptions ++= sys.env
           .get("SBT_SCALAC_STRICT_WARNINGS").filter(_ == "true").map(_ => "-Xfatal-warnings").toSeq,
@@ -273,6 +281,7 @@ lazy val lernaLog = lernaModule("lerna-log")
   .settings(wartremoverSettings, lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
+      Dependencies.ScalaLang.scalaCollectionCompat,
       Dependencies.SLF4J.api,
       Dependencies.Akka.slf4j,
       Dependencies.Akka.actorTyped % Optional,
