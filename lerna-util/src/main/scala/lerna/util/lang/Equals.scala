@@ -21,7 +21,6 @@ import scala.language.implicitConversions
   *
   * A compile error occurs if the wrong types are compared.
   * {{{
-  * scala> import lerna.util.lang.Equals._
   * scala> import org.scalatest.Assertions._
   *
   * scala> assertDoesNotCompile("1 === 1.0").isSucceeded

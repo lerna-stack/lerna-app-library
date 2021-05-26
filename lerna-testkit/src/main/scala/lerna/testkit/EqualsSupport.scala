@@ -35,7 +35,6 @@ trait EqualsSupport extends TypeCheckedTripleEquals {
   *
   * A compile error occurs if the wrong types are compared.
   * {{{
-  * scala> import lerna.testkit.EqualsSupport._
   * scala> import org.scalatest.Assertions._
   *
   * scala> assertDoesNotCompile("1 === 1.0").isSucceeded
