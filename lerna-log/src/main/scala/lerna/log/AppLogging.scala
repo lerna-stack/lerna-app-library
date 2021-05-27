@@ -49,9 +49,10 @@ trait AppLogger {
   def error(cause: Throwable, msg: String)(implicit logContext: LogContext): Unit
   def error(cause: Throwable, format: String, arguments: Any*)(implicit logContext: LogContext): Unit
 
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   protected def unwrapArg(arg: Any): AnyRef = arg match {
     case x: ScalaNumber => x.underlying
-    case x: AnyRef      => x
+    case x              => x.asInstanceOf[AnyRef]
   }
 
   protected def messageFormat(format: String, arguments: Any*): String = {
