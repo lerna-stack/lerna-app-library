@@ -6,7 +6,7 @@ addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.10")
 
 addSbtPlugin("org.wartremover" % "sbt-wartremover-contrib" % "1.3.1")
 
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.8.1")
 
 // ScalaPB
 addSbtPlugin("com.thesamet"                    % "sbt-protoc"     % "1.0.0-RC3")
