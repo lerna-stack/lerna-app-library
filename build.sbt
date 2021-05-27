@@ -120,7 +120,7 @@ lazy val excludeSbtJavaOptions = Set(
 // TODO Make own wartremover settings
 
 lazy val lernaCoverageSettings = Def.settings(
-  coverageMinimum := 80,
+  coverageMinimumStmtTotal := 80,
   coverageFailOnMinimum := false,
   coverageExcludedPackages := Seq(
     // Exclude auto generated code by ScalaPB
