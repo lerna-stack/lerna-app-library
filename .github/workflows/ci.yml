@@ -38,13 +38,13 @@ jobs:
 
       # Detect compilation errors early
       - name: Compile
-        run: sbt clean compile test:compile
+        run: sbt clean +compile +test:compile
 
       - name: Lint documentations
         run: sbt doc mdoc
 
       - name: Check binary compartibility
-        run: sbt mimaReportBinaryIssues
+        run: sbt +mimaReportBinaryIssues
 
       # https://github.com/marketplace/actions/docker-layer-caching
       - name: Pull the latest docker image
@@ -58,17 +58,17 @@ jobs:
 
       - name: Run tests
         continue-on-error: true # results are reported by action-junit-report
-        run: sbt coverage test
+        run: sbt coverage +test
 
       - name: Publish test report
         uses: mikepenz/action-junit-report@v2
         with:
           check_name: ScalaTest Report
-          report_paths: 'lerna-*/target/test-reports/TEST-*.xml'
+          report_paths: 'lerna-*/target/scala-*/test-reports/TEST-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check the test coverage is above the minimum criteria
-        run: sbt coverageAggregate
+        run: sbt +coverageReport
 
         # https://www.scala-sbt.org/1.x/docs/GitHub-Actions-with-sbt.html#Caching
       - name: Clean files for caching
