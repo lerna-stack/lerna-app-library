@@ -178,6 +178,13 @@ lazy val lernaMimaPreviousArtifacts: Def.Initialize[Set[ModuleID]] = Def.setting
 
 def lernaModule(name: String): Project =
   Project(id = name, base = file(name))
+    .settings(
+      testOptions += Tests.Argument(
+        TestFrameworks.ScalaTest,
+        "-u",
+        (crossTarget.value / "test-reports").getPath,
+      ),
+    )
 
 // Lerna Document
 lazy val lernaDocs = lernaModule("lerna-docs")
