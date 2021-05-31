@@ -38,6 +38,6 @@ final class LocalDateTimeJsonFormat private (formatter: DateTimeFormatter) exten
   override def write(datetime: LocalDateTime): JsValue = JsString(datetime.format(formatter))
   override def read(json: JsValue): LocalDateTime = json match {
     case JsString(dateStr) => LocalDateTime.parse(dateStr, formatter)
-    case x                 => deserializationError(s"Expected DateTime as JsString, but got $x")
+    case x                 => deserializationError(s"Expected DateTime as JsString, but got ${x.toString}")
   }
 }

@@ -24,7 +24,7 @@ object FutureConverters {
   )
   private[sequence] implicit class ListenableFutureConverter[A](val lf: ListenableFuture[A]) extends AnyVal {
     def asScala(implicit ec: ExecutionContext): Future[A] = {
-      val promise = Promise[A]
+      val promise = Promise[A]()
       lf.addListener(
         new Runnable {
           override def run() = promise.complete(Try(lf.get()))

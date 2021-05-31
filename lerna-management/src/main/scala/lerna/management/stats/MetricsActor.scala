@@ -20,7 +20,7 @@ private[stats] class MetricsActor extends Actor {
     case GetMetrics(key) =>
       sender() ! metricsMap.get(key)
     case UpdateMetrics(key, Some(value)) =>
-      context.become(active(metricsMap updated (key, value)))
+      context.become(active(metricsMap.updated(key, value)))
     case UpdateMetrics(key, None) =>
       // delete value
       context.become(active(metricsMap.filterNot { case (k, _) => k === key }))

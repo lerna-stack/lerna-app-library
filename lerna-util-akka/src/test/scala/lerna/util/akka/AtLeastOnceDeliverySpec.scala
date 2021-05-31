@@ -26,8 +26,8 @@ object AtLeastOnceDeliverySpec {
          |   }
          | }
          | lerna.util.akka.at-least-once-delivery {
-         |   redeliver-interval = ${redeliverInterval.toMillis} ms
-         |   retry-timeout = ${retryTimeout.toMillis} ms
+         |   redeliver-interval = ${redeliverInterval.toMillis.toString} ms
+         |   retry-timeout = ${retryTimeout.toMillis.toString} ms
          | }
        """.stripMargin)
     .withFallback(ConfigFactory.load())
@@ -48,8 +48,8 @@ class AtLeastOnceDeliverySpec
     "宛先に到達保証用メッセージを送信できる" in {
       val destinationProbe = TestProbe()
 
-      val requestMessage  = RequestMessage(s"request-${generateUniqueNumber()}")
-      val responseMessage = ResponseMessage(s"response-${generateUniqueNumber()}")
+      val requestMessage  = RequestMessage(s"request-${generateUniqueNumber().toString}")
+      val responseMessage = ResponseMessage(s"response-${generateUniqueNumber().toString}")
 
       val resultFuture = AtLeastOnceDelivery.askTo(destinationProbe.ref, requestMessage).mapTo[ResponseMessage]
 
@@ -69,7 +69,7 @@ class AtLeastOnceDeliverySpec
 
     "accept()されない場合は再送する" in {
       val destinationProbe = TestProbe()
-      val requestMessage   = RequestMessage(s"request-${generateUniqueNumber()}")
+      val requestMessage   = RequestMessage(s"request-${generateUniqueNumber().toString}")
 
       AtLeastOnceDelivery.askTo(destinationProbe.ref, requestMessage)
 
@@ -95,7 +95,7 @@ class AtLeastOnceDeliverySpec
     "retry-timeout時間経過しても accept()されなかった場合再送を中止する" in {
       val destinationProbe = TestProbe()
 
-      val requestMessage = RequestMessage(s"request-${generateUniqueNumber()}")
+      val requestMessage = RequestMessage(s"request-${generateUniqueNumber().toString}")
 
       AtLeastOnceDelivery.askTo(destinationProbe.ref, requestMessage)
 
@@ -115,8 +115,8 @@ class AtLeastOnceDeliverySpec
     "宛先に到達保証用メッセージを送信できる" in {
       val destinationProbe = TestProbe()
 
-      val requestMessage  = RequestMessage(s"request-${generateUniqueNumber()}")
-      val responseMessage = ResponseMessage(s"response-${generateUniqueNumber()}")
+      val requestMessage  = RequestMessage(s"request-${generateUniqueNumber().toString}")
+      val responseMessage = ResponseMessage(s"response-${generateUniqueNumber().toString}")
 
       AtLeastOnceDelivery.tellTo(destinationProbe.ref, requestMessage)
 
@@ -135,7 +135,7 @@ class AtLeastOnceDeliverySpec
     "accept()されない場合は再送する" in {
       val destinationProbe = TestProbe()
 
-      val requestMessage = RequestMessage(s"request-${generateUniqueNumber()}")
+      val requestMessage = RequestMessage(s"request-${generateUniqueNumber().toString}")
 
       AtLeastOnceDelivery.tellTo(destinationProbe.ref, requestMessage)
 
@@ -161,7 +161,7 @@ class AtLeastOnceDeliverySpec
     "retry-timeout時間経過しても accept()されなかった場合再送を中止する" in {
       val destinationProbe = TestProbe()
 
-      val requestMessage = RequestMessage(s"request-${generateUniqueNumber()}")
+      val requestMessage = RequestMessage(s"request-${generateUniqueNumber().toString}")
 
       AtLeastOnceDelivery.askTo(destinationProbe.ref, requestMessage)
 

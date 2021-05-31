@@ -15,7 +15,7 @@ trait RequestLogDirective extends GenTraceIDDirective with AppLogging {
     */
   def logRequestDirective(implicit logContext: LogContext): Directive0 =
     extractRequest map { req =>
-      logger info s"Request: [${req.method.value}] ${req.uri.path}, RequestHeaders: ${req.getHeaders.toString}"
+      logger info s"Request: [${req.method.value}] ${req.uri.path.toString}, RequestHeaders: ${req.getHeaders.toString}"
     }
 
   /** A directive that logs verbose of the response and the ''TraceID''
@@ -23,11 +23,11 @@ trait RequestLogDirective extends GenTraceIDDirective with AppLogging {
     */
   def logRequestResultDirective(implicit logContext: LogContext): Directive0 =
     extractRequest flatMap { req =>
-      mapRouteResult { routeResult ⇒
+      mapRouteResult { routeResult =>
         routeResult match {
           case RouteResult.Complete(res) =>
             logger.info(
-              s"Response: ${req.uri.path} : ${res.status}, ResponseHeaders: ${res.getHeaders}, " +
+              s"Response: ${req.uri.path.toString} : ${res.status.toString}, ResponseHeaders: ${res.getHeaders.toString}, " +
               s"RequestBody: ${req.entity.toString.replaceAll("\n", "")}, " +
               s"ResponseBody: ${res.entity.toString.replaceAll("\n", "")}",
             )

@@ -85,7 +85,7 @@ final class FailureSkipFlow[In, Out](flow: Flow[In, Out, _])(onFailure: (In, Thr
             pendingPull = false
           }
           val element = sinkIn.grab()
-          log.debug(s"sub-sink  -push-> out: $element")
+          log.debug(s"sub-sink  -push-> out: ${element.toString}")
           push(out, element)
           resetProcessingElement()
         }
@@ -150,7 +150,7 @@ final class FailureSkipFlow[In, Out](flow: Flow[In, Out, _])(onFailure: (In, Thr
         new InHandler {
           override def onPush(): Unit = {
             val element = grab(in)
-            log.debug(s"in  -push-> sub-source: $element")
+            log.debug(s"in  -push-> sub-source: ${element.toString}")
             sourceOut.push(element)
             // save the element to log when sub-flow failed
             saveProcessingElement(element)

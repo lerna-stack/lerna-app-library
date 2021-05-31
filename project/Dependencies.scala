@@ -13,12 +13,13 @@ object Dependencies {
     val kamonSystemMetrics  = "2.1.18"
     val logbackClassic      = "1.2.3"
     // Use ScalaTest & Scalactic 3.0.x for backward compatibility.
-    val scalaTest      = "3.0.9"
-    val scalactic      = "3.0.9"
-    val scalaXML       = "1.2.0"
-    val slf4jAPI       = "1.7.30"
-    val typesafeConfig = "1.4.0"
-    val wireMock       = "2.27.2"
+    val scalaTest             = "3.0.9"
+    val scalactic             = "3.0.9"
+    val scalaXML              = "1.2.0"
+    val scalaCollectionCompat = "2.4.4"
+    val slf4jAPI              = "1.7.30"
+    val typesafeConfig        = "1.4.0"
+    val wireMock              = "2.27.2"
   }
 
   object Typesafe {
@@ -62,6 +63,9 @@ object Dependencies {
   object ScalaLang {
     // これを依存に追加しないと Scalactic の Requirements でランタイムエラーになる
     lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % Versions.scalaXML
+    // For cross building
+    lazy val scalaCollectionCompat =
+      "org.scala-lang.modules" %% "scala-collection-compat" % Versions.scalaCollectionCompat
   }
 
   object ScalaTest {

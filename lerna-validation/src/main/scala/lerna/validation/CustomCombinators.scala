@@ -131,7 +131,7 @@ object CustomCombinators {
     */
   def decimal(min: Int = 0, max: Int = Integer.MAX_VALUE, scale: Int = 0): Validator[String] = {
 
-    val r = s"[0-9]{$min,$max}\\.[0-9]{$scale}".r
+    val r = s"[0-9]{${min.toString},${max.toString}}\\.[0-9]{${scale.toString}}".r
 
     new NullSafeValidator[String](
       test = {
@@ -139,7 +139,7 @@ object CustomCombinators {
         case _     => false
       },
       failure =
-        _ -> s"""is not a decimal format. It should be match the regex "${r.toString}". min = $min, max = $max, scale = $scale""",
+        _ -> s"""is not a decimal format. It should be match the regex "${r.toString}". min = ${min.toString}, max = ${max.toString}, scale = ${scale.toString}""",
     )
   }
 

@@ -1,9 +1,18 @@
+import sbt.Def
+
 import scala.util.Try
 
 name := "lerna-app-library"
 
+lazy val scala212               = "2.12.12"
+lazy val scala213               = "2.13.4"
+lazy val supportedScalaVersions = List(scala213, scala212)
+
 lazy val `root` = (project in file("."))
-  .settings(publish / skip := true)
+  .settings(
+    crossScalaVersions := Nil,
+    publish / skip := true,
+  )
   .enablePlugins(ScalaUnidocPlugin)
   .settings(unidocSettings)
   .disablePlugins(ProtocPlugin)
@@ -24,13 +33,14 @@ lazy val `root` = (project in file("."))
     inThisBuild(
       List(
         version := "1.0.0",
-        scalaVersion := "2.12.12",
+        scalaVersion := scala213,
         scalacOptions ++= Seq(
           "-deprecation",
           "-feature",
           "-unchecked",
           "-Xlint",
         ),
+        crossScalaVersions := supportedScalaVersions,
         scalacOptions in lernaWartCore in Test -= "-Xlint", // test:compile が未使用チェックに引っかかるため無効化
         scalacOptions ++= sys.env
           .get("SBT_SCALAC_STRICT_WARNINGS").filter(_ == "true").map(_ => "-Xfatal-warnings").toSeq,
@@ -155,8 +165,26 @@ lazy val scalapbSettings = Seq(
   wartremoverExcluded += sourceManaged.value,
 )
 
+// Mima Previous Artifacts
+lazy val lernaMimaPreviousArtifacts: Def.Initialize[Set[ModuleID]] = Def.setting {
+  val previousStableVersionOpt =
+    if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=2.13"))) {
+      previousStableVersion.value.filter(VersionNumber(_).matchesSemVer(SemanticSelector(">=2.0.0")))
+    } else {
+      previousStableVersion.value
+    }
+  previousStableVersionOpt.map(organization.value %% moduleName.value % _).toSet
+}
+
 def lernaModule(name: String): Project =
   Project(id = name, base = file(name))
+    .settings(
+      testOptions += Tests.Argument(
+        TestFrameworks.ScalaTest,
+        "-u",
+        (crossTarget.value / "test-reports").getPath,
+      ),
+    )
 
 // Lerna Document
 lazy val lernaDocs = lernaModule("lerna-docs")
@@ -192,7 +220,7 @@ lazy val lernaDocs = lernaModule("lerna-docs")
 
 // Lerna Custom Wart of WartRemover
 lazy val lernaWartCore = lernaModule("lerna-wart-core")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .settings(lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -203,7 +231,7 @@ lazy val lernaWartCore = lernaModule("lerna-wart-core")
 
 // Lerna Testkit Library
 lazy val lernaTestKit = lernaModule("lerna-testkit")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .settings(wartremoverSettings, lernaCoverageSettings, doctestSettings)
   .settings(
@@ -239,7 +267,7 @@ lazy val lernaTests = lernaModule("lerna-tests")
   )
 
 lazy val lernaManagement = lernaModule("lerna-management")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -258,7 +286,7 @@ lazy val lernaManagement = lernaModule("lerna-management")
 
 // Lerna Log Library
 lazy val lernaLog = lernaModule("lerna-log")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -266,6 +294,7 @@ lazy val lernaLog = lernaModule("lerna-log")
   .settings(wartremoverSettings, lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
+      Dependencies.ScalaLang.scalaCollectionCompat,
       Dependencies.SLF4J.api,
       Dependencies.Akka.slf4j,
       Dependencies.Akka.actorTyped % Optional,
@@ -275,7 +304,7 @@ lazy val lernaLog = lernaModule("lerna-log")
 
 // Lerna Util Library
 lazy val lernaUtil = lernaModule("lerna-util")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -292,7 +321,7 @@ lazy val lernaUtil = lernaModule("lerna-util")
 
 // Lerna Akka Util Library
 lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .dependsOn(
     lernaTests % Test,
     lernaUtil,
@@ -311,7 +340,7 @@ lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
 
 // Lerna Sequence Factory Library
 lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -329,7 +358,7 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
 
 // Lerna HTTP Library
 lazy val lernaHTTP = lernaModule("lerna-http")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
@@ -348,7 +377,7 @@ lazy val lernaHTTP = lernaModule("lerna-http")
   )
 
 lazy val lernaValidation = lernaModule("lerna-validation")
-  .settings(mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet)
+  .settings(mimaPreviousArtifacts := lernaMimaPreviousArtifacts.value)
   .disablePlugins(ProtocPlugin)
   .dependsOn(
     lernaTests % Test,
