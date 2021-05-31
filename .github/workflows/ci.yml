@@ -41,7 +41,7 @@ jobs:
         run: sbt clean +compile +test:compile
 
       - name: Lint documentations
-        run: sbt doc mdoc
+        run: sbt doc +mdoc
 
       - name: Check binary compartibility
         run: sbt +mimaReportBinaryIssues
