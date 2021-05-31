@@ -169,7 +169,7 @@ lazy val scalapbSettings = Seq(
 lazy val lernaMimaPreviousArtifacts: Def.Initialize[Set[ModuleID]] = Def.setting {
   val previousStableVersionOpt =
     if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=2.13"))) {
-      previousStableVersion.value.filterNot(VersionNumber(_).matchesSemVer(SemanticSelector("<2.0.0")))
+      previousStableVersion.value.filter(VersionNumber(_).matchesSemVer(SemanticSelector(">=2.0.0")))
     } else {
       previousStableVersion.value
     }
