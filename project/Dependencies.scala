@@ -98,16 +98,16 @@ object Dependencies {
 // We can use an unstable version for test purposes.
 object TestDependencies {
   object Versions {
-    val expecty    = "0.14.1"
-    val scalaCheck = "1.14.0"
+    val expecty                 = "0.14.1"
+    val scalaTestPlusScalaCheck = "3.1.4.0"
   }
 
   object Expecty {
     lazy val expecty = "com.eed3si9n.expecty" %% "expecty" % Versions.expecty
   }
 
-  object ScalaCheck {
-    val scalaCheck = "org.scalacheck" %% "scalacheck" % Versions.scalaCheck
+  object ScalaTestPlus {
+    val scalaCheck = "org.scalatestplus" %% "scalacheck-1-14" % Versions.scalaTestPlusScalaCheck
   }
 
 }
