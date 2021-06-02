@@ -1,0 +1,8 @@
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.eventually")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.eventually")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.eventually")
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.eventually")
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.execute")
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.newAssertionFailedException")
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.trap")
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.testkit.akka.ScalaTestWithClassicActorTestKit.assertionsHelper")
