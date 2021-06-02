@@ -1,12 +1,13 @@
 package lerna.warts
 
-import org.scalatest.{ DiagrammedAssertions, WordSpec }
 import org.wartremover.test.WartTestTraverser
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
+import org.scalatest.diagrams.Diagrams
+import org.scalatest.wordspec.AnyWordSpec
 
-class AwaitsSpec extends WordSpec with DiagrammedAssertions {
+class AwaitsSpec extends AnyWordSpec with Diagrams {
 
   "Awaits" should {
 

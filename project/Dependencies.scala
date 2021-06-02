@@ -4,17 +4,16 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val accord              = "0.7.6"
-    val airframe            = "20.9.0"
-    val akka                = "2.6.8"
-    val akkaHTTP            = "10.1.12"
-    val cassandraDriverCore = "3.7.1"
-    val kamonCore           = "2.1.18"
-    val kamonSystemMetrics  = "2.1.18"
-    val logbackClassic      = "1.2.3"
-    // Use ScalaTest & Scalactic 3.0.x for backward compatibility.
-    val scalaTest             = "3.0.9"
-    val scalactic             = "3.0.9"
+    val accord                = "0.7.6"
+    val airframe              = "20.9.0"
+    val akka                  = "2.6.8"
+    val akkaHTTP              = "10.1.12"
+    val cassandraDriverCore   = "3.7.1"
+    val kamonCore             = "2.1.18"
+    val kamonSystemMetrics    = "2.1.18"
+    val logbackClassic        = "1.2.3"
+    val scalaTest             = "3.1.4"
+    val scalactic             = "3.1.4"
     val scalaXML              = "1.2.0"
     val scalaCollectionCompat = "2.4.4"
     val slf4jAPI              = "1.7.30"
