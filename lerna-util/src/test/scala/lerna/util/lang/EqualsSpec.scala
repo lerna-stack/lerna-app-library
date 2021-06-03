@@ -1,8 +1,9 @@
 package lerna.util.lang
 
 import com.eed3si9n.expecty.Expecty
-import org.scalatest.{ Matchers, WordSpecLike }
 import org.scalatest.exceptions.TestFailedException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 /** This class cannot extend [[lerna.util.LernaUtilBaseSpec]]
   * because [[lerna.testkit.EqualsSupport]] that is mixed in to [[lerna.util.LernaUtilBaseSpec]] has same operators of [[lerna.util.lang.Equals]].
@@ -10,7 +11,7 @@ import org.scalatest.exceptions.TestFailedException
 @SuppressWarnings(
   Array("org.wartremover.warts.Null"),
 )
-final class EqualsSpec extends WordSpecLike with Matchers with Equals {
+final class EqualsSpec extends AnyWordSpecLike with Matchers with Equals {
 
   "Equals" should {
 

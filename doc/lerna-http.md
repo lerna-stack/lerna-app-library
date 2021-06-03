@@ -110,9 +110,10 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import lerna.http.directives.GenTraceIDDirective
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 
-final class MySpec extends WordSpecLike with Matchers with ScalatestRouteTest with GenTraceIDDirective {
+final class MySpec extends AnyWordSpecLike with Matchers with ScalatestRouteTest with GenTraceIDDirective {
     val route = Route.seal(
       extractTraceId { traceId =>
         complete(traceId.id)

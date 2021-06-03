@@ -1,9 +1,10 @@
 package lerna.warts
 
-import org.scalatest.{ DiagrammedAssertions, WordSpec }
 import org.wartremover.test.WartTestTraverser
+import org.scalatest.diagrams.Diagrams
+import org.scalatest.wordspec.AnyWordSpec
 
-class CyclomaticComplexitySpec extends WordSpec with DiagrammedAssertions {
+class CyclomaticComplexitySpec extends AnyWordSpec with Diagrams {
 
   "CyclomaticComplexity" should {
 
