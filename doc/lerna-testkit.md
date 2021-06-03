@@ -23,9 +23,10 @@ You can use this class like below.
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 
-final class MySpec extends ScalaTestWithTypedActorTestKit() with WordSpecLike with Matchers {
+final class MySpec extends ScalaTestWithTypedActorTestKit() with AnyWordSpecLike with Matchers {
   import MySpec.Echo
   "ScalaTestWithTypedActorTestKit" should {
     "testKit is available in the test" in {
