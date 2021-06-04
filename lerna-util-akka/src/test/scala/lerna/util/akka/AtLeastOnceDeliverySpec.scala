@@ -211,7 +211,7 @@ object AtLeastOnceDeliveryTypedSpec {
   final case class RequestMessage(
       message: String,
       replyTo: ActorRef[ResponseMessage],
-      confirmTo: ActorRef[AtLeastOnceDelivery.Confirm.type],
+      confirmTo: ActorRef[AtLeastOnceDelivery.Confirm],
   )
   final case class ResponseMessage(message: String)
 }
