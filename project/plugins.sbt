@@ -23,5 +23,5 @@ addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "2.0")
 addSbtPlugin("com.jsuereth"   % "sbt-pgp"      % "2.0.1")
 
 // Compatibility check
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.1")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.9.2")
 addSbtPlugin("com.dwijnand" % "sbt-dynver"      % "4.1.1")
