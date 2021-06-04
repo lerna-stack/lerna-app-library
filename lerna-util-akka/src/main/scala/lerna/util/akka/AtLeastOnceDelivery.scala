@@ -32,7 +32,6 @@ object AtLeastOnceDelivery {
     * @param system The [[akka.actor.ActorSystem]] to be used
     * @param timeout The entire timeout
     * @return The [[scala.concurrent.Future]] holding the reply message or an exception
-    * @note Use [[https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html Akka Reliable Delivery]] if you use Akka typed.
     */
   def askTo(
       destination: ActorRef,

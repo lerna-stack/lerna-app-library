@@ -4,14 +4,15 @@
 
 ## AtLeastOnceDelivery
 
-`AtLeastOnceDelivery` is an object that provides reliable delivery features for *Akka Classic*.
-If you work on *Akka Typed*, we recommend using the [Official Reliable Delivery](https://doc.akka.io/docs/akka/current/typed/reliable-delivery.html).
+`AtLeastOnceDelivery` is an object that provides reliable delivery features for *Akka Classic* and *Akka Typed*.
 `AtLeastOnceDelivery` provides two methods `askTo` and `tellTo`.
 
+### `AtLeastOnceDelivery.askTo`
 `AtLeastOnceDelivery.askTo` provides a similar feature provided by `akka.pattern.ask`, but it has a retry mechanism.
 We can use `AtLeastOnceDelivery.askTo` like below.
 For more details, see a Scaladoc.
 
+#### Akka Classic
 ```scala mdoc:compile-only
 import lerna.util.akka.AtLeastOnceDelivery
 import lerna.util.tenant.Tenant
@@ -34,10 +35,43 @@ implicit val ctx = new RequestContext {
 val response: Future[Any] = AtLeastOnceDelivery.askTo(echoActor, "message")
 ```
 
+#### Akka Typed
+```scala mdoc:compile-only
+import akka.actor.typed.{ ActorSystem, ActorRef }
+import akka.util.Timeout
+
+import lerna.util.akka.AtLeastOnceDelivery
+import lerna.util.trace.RequestContext
+
+import scala.concurrent.Future
+
+sealed trait Reply
+
+case class Command(
+    message: String,
+    replyTo: ActorRef[Reply],
+    confirmTo: ActorRef[AtLeastOnceDelivery.Confirm],
+)
+
+implicit val typedSystem: ActorSystem[_] = ???
+implicit val timeout: Timeout = ???
+implicit val ctx: RequestContext = ???
+
+val destination: ActorRef[Command] = ???
+
+val response: Future[Reply] = AtLeastOnceDelivery
+    .askTo[Command, Reply](
+        destination,
+        (replyTo, confirmTo) => Command("dummy", replyTo, confirmTo),
+    )
+```
+
+### `AtLeastOnceDelivery.tellTo`
 `AtLeastOnceDelivery.tellTo` provides a simiar feature provided by Akka's `tell`, but it has a retry mechanism.
 We can use `AtLeastOnceDelivery.tellTo` like below.
 For more details, see a Scaladoc.
 
+#### Akka Classic
 ```scala mdoc:compile-only
 import lerna.util.akka.AtLeastOnceDelivery
 import lerna.util.tenant.Tenant
@@ -54,6 +88,30 @@ implicit val ctx = new RequestContext {
     def tenant: Tenant = new Tenant { val id = "" }
 }
 AtLeastOnceDelivery.tellTo(echoActor, "message")
+```
+
+#### Akka Typed
+```scala mdoc:compile-only
+import akka.actor.typed.{ ActorSystem, ActorRef }
+
+import lerna.util.akka.AtLeastOnceDelivery
+import lerna.util.trace.RequestContext
+
+case class Command(
+    message: String,
+    confirmTo: ActorRef[AtLeastOnceDelivery.Confirm],
+)
+
+implicit val typedSystem: ActorSystem[_] = ???
+implicit val ctx: RequestContext = ???
+
+val destination: ActorRef[Command] = ???
+
+AtLeastOnceDelivery
+    .tellTo[Command](
+        destination,
+        (confirmTo) => Command("dummy", confirmTo),
+    )
 ```
 
 
