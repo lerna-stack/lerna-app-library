@@ -1,0 +1,2 @@
+# シリアライズ互換性は protobuf を使用している・元々 package private なので問題なし
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.akka.AtLeastOnceDelivery$AtLeastOnceDeliveryConfirm$")

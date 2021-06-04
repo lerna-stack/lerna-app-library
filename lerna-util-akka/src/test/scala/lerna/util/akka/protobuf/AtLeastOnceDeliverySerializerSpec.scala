@@ -24,7 +24,7 @@ final class AtLeastOnceDeliverySerializerSpec()
       val ref = system.actorOf(TestActors.blackholeProps)
       checkSerialization(AtLeastOnceDeliveryRequest(123)(ref))
       checkSerialization(AtLeastOnceDeliveryRequest("abcdef")(ref))
-      checkSerialization(AtLeastOnceDeliveryConfirm)
+      checkSerialization(Confirm)
     }
 
   }
@@ -49,7 +49,7 @@ final class AtLeastOnceDeliverySerializerSpec()
 
   "AtLeastOnceDeliverySerializer.fromBinary" should {
     "throw a NotSerializableException if the given manifest is invalid" in {
-      val validBinary     = serializer.toBinary(AtLeastOnceDeliveryConfirm)
+      val validBinary     = serializer.toBinary(Confirm)
       val invalidManifest = "INVALID_MANIFEST"
       a[NotSerializableException] shouldBe thrownBy {
         serializer.fromBinary(validBinary, invalidManifest)

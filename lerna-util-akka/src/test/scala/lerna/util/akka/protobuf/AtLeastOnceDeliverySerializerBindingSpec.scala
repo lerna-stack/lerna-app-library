@@ -22,7 +22,7 @@ final class AtLeastOnceDeliverySerializerBindingSpec
       val ref = system.actorOf(TestActors.blackholeProps)
       checkSerializer(AtLeastOnceDeliveryRequest(123)(ref))
       checkSerializer(AtLeastOnceDeliveryRequest("abc")(ref))
-      checkSerializer(AtLeastOnceDeliveryConfirm)
+      checkSerializer(Confirm)
     }
   }
 

@@ -211,7 +211,7 @@ object AtLeastOnceDeliveryTypedSpec {
   final case class RequestMessage(
       message: String,
       replyTo: ActorRef[ResponseMessage],
-      confirmTo: ActorRef[AtLeastOnceDelivery.AtLeastOnceDeliveryConfirm.type],
+      confirmTo: ActorRef[AtLeastOnceDelivery.Confirm.type],
   )
   final case class ResponseMessage(message: String)
 }
@@ -239,7 +239,7 @@ class AtLeastOnceDeliveryTypedSpec
         val request = destinationProbe.receiveMessage()
         expect(request.message === requestMessage)
 
-        request.confirmTo ! AtLeastOnceDelivery.AtLeastOnceDeliveryConfirm
+        request.confirmTo ! AtLeastOnceDelivery.Confirm
         request.replyTo ! responseMessage
       }
 
@@ -268,7 +268,7 @@ class AtLeastOnceDeliveryTypedSpec
         val request4 = destinationProbe.receiveMessage()
         expect(request4.message === requestMessage)
 
-        request4.confirmTo ! AtLeastOnceDelivery.AtLeastOnceDeliveryConfirm
+        request4.confirmTo ! AtLeastOnceDelivery.Confirm
         destinationProbe.expectNoMessage()
       }
     }
@@ -310,7 +310,7 @@ class AtLeastOnceDeliveryTypedSpec
         val request = destinationProbe.receiveMessage()
         expect(request.message === requestMessage)
 
-        request.confirmTo ! AtLeastOnceDelivery.AtLeastOnceDeliveryConfirm
+        request.confirmTo ! AtLeastOnceDelivery.Confirm
         request.replyTo ! responseMessage
       }
 
@@ -339,7 +339,7 @@ class AtLeastOnceDeliveryTypedSpec
         val request4 = destinationProbe.receiveMessage()
         expect(request4.message === requestMessage)
 
-        request4.confirmTo ! AtLeastOnceDelivery.AtLeastOnceDeliveryConfirm
+        request4.confirmTo ! AtLeastOnceDelivery.Confirm
         destinationProbe.expectNoMessage()
         replyToProbe.expectNoMessage()
       }

@@ -89,7 +89,7 @@ object AtLeastOnceDelivery {
     */
   def askTo[Command, Reply](
       destination: typed.ActorRef[Command],
-      message: (typed.ActorRef[Reply], typed.ActorRef[AtLeastOnceDeliveryConfirm.type]) => Command,
+      message: (typed.ActorRef[Reply], typed.ActorRef[Confirm.type]) => Command,
   )(implicit requestContext: RequestContext, system: typed.ActorSystem[_], timeout: Timeout): Future[Reply] = {
     import akka.actor.typed.scaladsl.AskPattern._
     val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic)).toTyped
@@ -116,7 +116,7 @@ object AtLeastOnceDelivery {
     */
   def tellTo[Command](
       destination: typed.ActorRef[Command],
-      message: typed.ActorRef[AtLeastOnceDeliveryConfirm.type] => Command,
+      message: typed.ActorRef[Confirm.type] => Command,
   )(implicit requestContext: RequestContext, system: typed.ActorSystem[_]): Unit = {
     val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic))
     atLeastOnceDeliveryProxy ! message(atLeastOnceDeliveryProxy)
@@ -125,7 +125,7 @@ object AtLeastOnceDelivery {
   // Actor's protocol
   private[akka] sealed trait AtLeastOnceDeliveryCommand
 
-  case object AtLeastOnceDeliveryConfirm extends AtLeastOnceDeliveryCommand with AtLeastOnceDeliverySerializable
+  case object Confirm extends AtLeastOnceDeliveryCommand with AtLeastOnceDeliverySerializable
 
   /** A message that holds the original message and the destination actor to send a confirmation
     *
@@ -139,7 +139,7 @@ object AtLeastOnceDelivery {
       *
       * If the confirmation is not sent, the sender retries to send the same message.
       */
-    def accept(): Unit = self ! AtLeastOnceDeliveryConfirm
+    def accept(): Unit = self ! Confirm
   }
 
   // Marker trait for actor's private commands that need no serialization
@@ -199,7 +199,7 @@ private[akka] final class AtLeastOnceDelivery(destination: ActorRef)(implicit re
     case SendRequest =>
       destination.tell(message, replyTo.actorRef)
 
-    case AtLeastOnceDeliveryConfirm =>
+    case Confirm =>
       context.stop(self)
       retryScheduler.cancel()
 
