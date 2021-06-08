@@ -66,12 +66,12 @@ private[akka] final class AtLeastOnceDeliverySerializer(val system: ExtendedActo
 
   private def serializableToManifest(message: AtLeastOnceDeliverySerializable): String = message match {
     case _: AtLeastOnceDeliveryRequest => RequestManifest
-    case AtLeastOnceDeliveryConfirm    => ConfirmManifest
+    case Confirm                       => ConfirmManifest
   }
 
   private def serializableToBinary(message: AtLeastOnceDeliverySerializable): Array[Byte] = message match {
-    case m: AtLeastOnceDeliveryRequest      => requestToBinary(m)
-    case m: AtLeastOnceDeliveryConfirm.type => confirmToBinary(m)
+    case m: AtLeastOnceDeliveryRequest => requestToBinary(m)
+    case m: Confirm.type               => confirmToBinary(m)
   }
 
   private def requestToBinary(request: AtLeastOnceDeliveryRequest): Array[Byte] = {
@@ -96,15 +96,15 @@ private[akka] final class AtLeastOnceDeliverySerializer(val system: ExtendedActo
     AtLeastOnceDeliveryRequest(originalMessage)(replyActorRef)
   }
 
-  private def confirmToBinary(message: AtLeastOnceDeliveryConfirm.type): Array[Byte] = {
+  private def confirmToBinary(message: Confirm.type): Array[Byte] = {
     // We serialize nothing for now, but use protobuf for schema evolution in the future.
     msg.AtLeastOnceDeliveryConfirm.of().toByteArray
   }
 
-  private def confirmFromBinary(bytes: Array[Byte]): AtLeastOnceDeliveryConfirm.type = {
+  private def confirmFromBinary(bytes: Array[Byte]): Confirm.type = {
     // We don't need anything from deserialized message, but check it for safety guard.
     val _ = msg.AtLeastOnceDeliveryConfirm.parseFrom(bytes)
-    AtLeastOnceDeliveryConfirm
+    Confirm
   }
 
   private def payloadToProto(message: Any): msg.Payload = {
