@@ -2,6 +2,16 @@
 
 ## 2.0.0 from 1.0.0
 
+### lerna-testkit
+
+#### Update ScalaTest to `3.1.0+`
+*lerna-testkit 2.0.0* depends on *ScalaTest 3.1.0+*.
+If we have used *ScalaTest 3.0.0+*, we have to update *ScalaTest* to *3.1.0+*.
+This is because *ScalaTest 3.1.0* and *ScalaTest 3.0.0* are not binary compatible.
+
+It may be quite simple to update ScalaTest 3.0.0+ to 3.1.0+
+since we can grab the *ScalaFix* tool here([autofix/3.0.x at master · scalatest/autofix](https://github.com/scalatest/autofix/tree/master/3.0.x), [autofix/3.1.x at master · scalatest/autofix](https://github.com/scalatest/autofix/tree/master/3.1.x)).
+
 ### lerna-management
 
 #### Initialization procedures are changed

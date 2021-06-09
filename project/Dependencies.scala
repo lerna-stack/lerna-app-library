@@ -4,17 +4,16 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val accord              = "0.7.6"
-    val airframe            = "20.9.0"
-    val akka                = "2.6.8"
-    val akkaHTTP            = "10.1.12"
-    val cassandraDriverCore = "3.7.1"
-    val kamonCore           = "2.1.18"
-    val kamonSystemMetrics  = "2.1.18"
-    val logbackClassic      = "1.2.3"
-    // Use ScalaTest & Scalactic 3.0.x for backward compatibility.
-    val scalaTest             = "3.0.9"
-    val scalactic             = "3.0.9"
+    val accord                = "0.7.6"
+    val airframe              = "20.9.0"
+    val akka                  = "2.6.8"
+    val akkaHTTP              = "10.1.12"
+    val cassandraDriverCore   = "3.7.1"
+    val kamonCore             = "2.1.18"
+    val kamonSystemMetrics    = "2.1.18"
+    val logbackClassic        = "1.2.3"
+    val scalaTest             = "3.1.4"
+    val scalactic             = "3.1.4"
     val scalaXML              = "1.2.0"
     val scalaCollectionCompat = "2.4.4"
     val slf4jAPI              = "1.7.30"
@@ -99,16 +98,16 @@ object Dependencies {
 // We can use an unstable version for test purposes.
 object TestDependencies {
   object Versions {
-    val expecty    = "0.14.1"
-    val scalaCheck = "1.14.0"
+    val expecty                 = "0.14.1"
+    val scalaTestPlusScalaCheck = "3.1.4.0"
   }
 
   object Expecty {
     lazy val expecty = "com.eed3si9n.expecty" %% "expecty" % Versions.expecty
   }
 
-  object ScalaCheck {
-    val scalaCheck = "org.scalacheck" %% "scalacheck" % Versions.scalaCheck
+  object ScalaTestPlus {
+    val scalaCheck = "org.scalatestplus" %% "scalacheck-1-14" % Versions.scalaTestPlusScalaCheck
   }
 
 }

@@ -23,9 +23,10 @@ You can use this class like below.
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 
-final class MySpec extends ScalaTestWithTypedActorTestKit() with WordSpecLike with Matchers {
+final class MySpec extends ScalaTestWithTypedActorTestKit() with AnyWordSpecLike with Matchers {
   import MySpec.Echo
   "ScalaTestWithTypedActorTestKit" should {
     "testKit is available in the test" in {
@@ -67,12 +68,13 @@ You can use this class like below.
 ```scala mdoc:reset
 import akka.actor._
 import akka.testkit._
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 import lerna.testkit.akka.ScalaTestWithClassicActorTestKit
 
 final class MySpec
     extends ScalaTestWithClassicActorTestKit(ActorSystem("my-spec"))
-    with WordSpecLike with Matchers {
+    with AnyWordSpecLike with Matchers {
   "ScalaTestWithClassicActorTestKit" should {
     "provide the ActorSystem in a test" in {
       val actor = system.actorOf(TestActors.echoActorProps)
@@ -97,14 +99,15 @@ libraryDependencies += "org.wvlet.airframe" %% "airframe" % "20.9.0" % Test
 You can use this trait like below.
 
 ```scala mdoc:reset
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 import wvlet.airframe._
 import lerna.testkit.airframe.DISessionSupport
 
 class ExampleComponent() {
   def echo(msg: String): String = msg
 }
-final class MySpec extends WordSpecLike with Matchers with DISessionSupport {
+final class MySpec extends AnyWordSpecLike with Matchers with DISessionSupport {
   override val diDesign: Design = newDesign
     .bind[ExampleComponent].toSingleton
 

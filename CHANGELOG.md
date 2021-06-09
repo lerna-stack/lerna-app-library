@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `lerna-testkit`: Added testkit for TypedActor
 - `lerna-log`: Added Logger for TypedActor
+- `lerna-util-akka`: Added `AtLeastOnceDelivery` API for TypedActor 
 
 ### Changed
 - `lerna-management`
   - Update to `Kamon 2.1.8` from `Kamon 1.1.6`
   - Improve documentation
   - Provide [migration guide](doc/migration-guide.md)
+- Update to `ScalaTest 3.1.4` from `ScalaTest 3.0.9`
 
 ## [v1.0.0] - 2020-12-22
 [v1.0.0]: https://github.com/lerna-stack/lerna-app-library/tree/v1.0.0

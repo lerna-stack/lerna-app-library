@@ -150,8 +150,8 @@ doctestScalaTestVersion := Some(Dependencies.Versions.scalaTest)
 doctestTestFramework := com.github.tkawachi.doctest.DoctestPlugin.DoctestTestFramework.ScalaTest
 val doctestSettings = Seq(
   libraryDependencies ++= Seq(
-    Dependencies.ScalaTest.scalaTest       % Test,
-    TestDependencies.ScalaCheck.scalaCheck % Test,
+    Dependencies.ScalaTest.scalaTest          % Test,
+    TestDependencies.ScalaTestPlus.scalaCheck % Test,
   ),
   // Exclude managed source from WartRemover targets
   wartremoverExcluded += sourceManaged.value,
@@ -331,8 +331,10 @@ lazy val lernaUtilAkka = lernaModule("lerna-util-akka")
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.Akka.actor,
+      Dependencies.Akka.actorTyped,
       Dependencies.Akka.stream,
       Dependencies.Akka.testKit              % Test,
+      Dependencies.Akka.actorTestKitTyped    % Test,
       Dependencies.Akka.streamTestKit        % Test,
       Dependencies.Akka.serializationJackson % Test,
     ),
