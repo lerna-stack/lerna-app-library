@@ -4,14 +4,12 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 import lerna.util.lang.Equals._
 
-private[stats] sealed trait MetricsActorCommand
-
 private[stats] object MetricsActor {
 
-  def apply(): Behavior[MetricsActorCommand] = active(Map())
+  def apply(): Behavior[Command] = active(Map())
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
-  private def active(metricsMap: Map[MetricsKey, MetricsValue]): Behaviors.Receive[MetricsActorCommand] =
+  private def active(metricsMap: Map[MetricsKey, MetricsValue]): Behaviors.Receive[Command] =
     Behaviors.receiveMessage {
       case GetMetrics(key, replyTo) =>
         replyTo ! metricsMap.get(key)
@@ -25,6 +23,8 @@ private[stats] object MetricsActor {
         active(metricsMap.filterNot { case (k, _) => k === key })
     }
 
-  final case class UpdateMetrics(key: MetricsKey, value: Option[MetricsValue])          extends MetricsActorCommand
-  final case class GetMetrics(key: MetricsKey, replyTo: ActorRef[Option[MetricsValue]]) extends MetricsActorCommand
+  sealed trait Command
+
+  final case class UpdateMetrics(key: MetricsKey, value: Option[MetricsValue])          extends Command
+  final case class GetMetrics(key: MetricsKey, replyTo: ActorRef[Option[MetricsValue]]) extends Command
 }
