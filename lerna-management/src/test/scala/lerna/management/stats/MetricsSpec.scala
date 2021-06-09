@@ -1,8 +1,9 @@
 package lerna.management.stats
 
 import akka.actor.{ typed, ActorSystem }
-import akka.actor.typed.scaladsl.adapter._
 import lerna.management.LernaManagementActorBaseSpec
+import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
+import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 
 final class MetricsSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsSpec")) {
@@ -14,9 +15,13 @@ final class MetricsSpec extends LernaManagementActorBaseSpec(ActorSystem("Metric
       val metrics = Metrics(system, Set(tenant1))
       metrics shouldBe a[MetricsImpl]
     }
+  }
+}
 
+final class MetricsTypedSpec extends ScalaTestWithTypedActorTestKit() with LernaBaseSpec {
+  "Metrics.apply" should {
     "create a default instance by typed ActorSystem" in {
-      val typedSystem: typed.ActorSystem[Nothing] = system.toTyped
+      val typedSystem: typed.ActorSystem[Nothing] = system
       val tenant1: Tenant = new Tenant {
         override def id: String = "dummy-1"
       }
