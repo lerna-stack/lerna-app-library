@@ -1,0 +1,16 @@
+# lerna.management.stats.Metrics の typed 対応
+# Actor 定義を typed 化した際に Command に replyTo を追加
+# 以下の理由から変更しても互換性に問題はない
+# - Command は node を跨がらない
+# - Command は package private なので lerna-management lib 以外から使用されない
+
+#  method copy(lerna.management.stats.MetricsKey)lerna.management.stats.MetricsActor#GetMetrics in class lerna.management.stats.MetricsActor#GetMetrics does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.management.stats.MetricsActor#GetMetrics.copy")
+#  method this(lerna.management.stats.MetricsKey)Unit in class lerna.management.stats.MetricsActor#GetMetrics does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.management.stats.MetricsActor#GetMetrics.this")
+#  the type hierarchy of object lerna.management.stats.MetricsActor#GetMetrics is different in current version. Missing types {scala.runtime.AbstractFunction1}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.management.stats.MetricsActor$GetMetrics$")
+#  method apply(lerna.management.stats.MetricsKey)lerna.management.stats.MetricsActor#GetMetrics in object lerna.management.stats.MetricsActor#GetMetrics does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.management.stats.MetricsActor#GetMetrics.apply")
+#  method unapply(lerna.management.stats.MetricsActor#GetMetrics)scala.Option in object lerna.management.stats.MetricsActor#GetMetrics has a different generic signature in current version, where it is (Llerna/management/stats/MetricsActor$GetMetrics;)Lscala/Option<Lscala/Tuple2<Llerna/management/stats/MetricsKey;Lakka/actor/typed/ActorRef<Lscala/Option<Llerna/management/stats/MetricsValue;>;>;>;>; rather than (Llerna/management/stats/MetricsActor$GetMetrics;)Lscala/Option<Llerna/management/stats/MetricsKey;>;. See https://github.com/lightbend/mima#incompatiblesignatureproblem
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.management.stats.MetricsActor#GetMetrics.unapply")

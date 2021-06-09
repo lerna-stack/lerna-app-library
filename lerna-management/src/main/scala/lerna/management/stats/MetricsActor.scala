@@ -1,39 +1,30 @@
 package lerna.management.stats
 
-import akka.actor.{ Actor, Props }
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ ActorRef, Behavior }
 import lerna.util.lang.Equals._
-
-@SuppressWarnings(Array("org.wartremover.warts.Recursion"))
-private[stats] class MetricsActor extends Actor {
-
-  import MetricsActor._
-
-  override def receive: Receive = {
-    Actor.emptyBehavior
-  }
-
-  override def preStart(): Unit = {
-    context.become(active(Map()))
-  }
-
-  def active(metricsMap: Map[MetricsKey, MetricsValue]): Receive = {
-    case GetMetrics(key) =>
-      sender() ! metricsMap.get(key)
-    case UpdateMetrics(key, Some(value)) =>
-      context.become(active(metricsMap.updated(key, value)))
-    case UpdateMetrics(key, None) =>
-      // delete value
-      context.become(active(metricsMap.filterNot { case (k, _) => k === key }))
-  }
-
-}
 
 private[stats] sealed trait MetricsActorCommand
 
 private[stats] object MetricsActor {
 
-  def props(): Props = Props(new MetricsActor)
+  def apply(): Behavior[MetricsActorCommand] = active(Map())
 
-  final case class UpdateMetrics(key: MetricsKey, value: Option[MetricsValue]) extends MetricsActorCommand
-  final case class GetMetrics(key: MetricsKey)                                 extends MetricsActorCommand
+  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
+  private def active(metricsMap: Map[MetricsKey, MetricsValue]): Behaviors.Receive[MetricsActorCommand] =
+    Behaviors.receiveMessage {
+      case GetMetrics(key, replyTo) =>
+        replyTo ! metricsMap.get(key)
+        Behaviors.same
+
+      case UpdateMetrics(key, Some(value)) =>
+        active(metricsMap.updated(key, value))
+
+      case UpdateMetrics(key, None) =>
+        // delete value
+        active(metricsMap.filterNot { case (k, _) => k === key })
+    }
+
+  final case class UpdateMetrics(key: MetricsKey, value: Option[MetricsValue])          extends MetricsActorCommand
+  final case class GetMetrics(key: MetricsKey, replyTo: ActorRef[Option[MetricsValue]]) extends MetricsActorCommand
 }
