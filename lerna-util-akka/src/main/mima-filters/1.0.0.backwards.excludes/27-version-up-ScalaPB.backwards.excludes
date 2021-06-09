@@ -1,0 +1,23 @@
+# ScalaPB version up
+# method 呼び出しはライブラリ外からの呼び出しを考慮していないので非互換でも問題ない
+# JVM 間の互換性は protocol buffer によって保証されているので問題ない
+
+
+# static method merge(lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm in class lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm's type is different in current version, where it is (scalapb.GeneratedMessage,com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage instead of (lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm.merge")
+# static method parseFrom(com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage in class lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm has a different result type in current version, where it is lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm rather than scalapb.GeneratedMessage
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm.parseFrom")
+# method merge(lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm in object lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryConfirm.merge")
+# static method merge(lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest in class lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest's type is different in current version, where it is (scalapb.GeneratedMessage,com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage instead of (lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest.merge")
+# static method parseFrom(com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage in class lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest has a different result type in current version, where it is lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest rather than scalapb.GeneratedMessage
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest.parseFrom")
+# method merge(lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest in object lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.akka.protobuf.msg.AtLeastOnceDeliveryRequest.merge")
+# static method merge(lerna.util.akka.protobuf.msg.Payload,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.Payload in class lerna.util.akka.protobuf.msg.Payload's type is different in current version, where it is (scalapb.GeneratedMessage,com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage instead of (lerna.util.akka.protobuf.msg.Payload,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.Payload
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.akka.protobuf.msg.Payload.merge")
+# static method parseFrom(com.google.protobuf.CodedInputStream)scalapb.GeneratedMessage in class lerna.util.akka.protobuf.msg.Payload has a different result type in current version, where it is lerna.util.akka.protobuf.msg.Payload rather than scalapb.GeneratedMessage
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.akka.protobuf.msg.Payload.parseFrom")
+# method merge(lerna.util.akka.protobuf.msg.Payload,com.google.protobuf.CodedInputStream)lerna.util.akka.protobuf.msg.Payload in object lerna.util.akka.protobuf.msg.Payload does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.akka.protobuf.msg.Payload.merge")

@@ -9,8 +9,8 @@ addSbtPlugin("org.wartremover" % "sbt-wartremover-contrib" % "1.3.1")
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.8.1")
 
 // ScalaPB
-addSbtPlugin("com.thesamet"                    % "sbt-protoc"     % "1.0.0-RC3")
-libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.10.8"
+addSbtPlugin("com.thesamet"                    % "sbt-protoc"     % "1.0.2")
+libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.3"
 
 // Documentation
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "2.0.0")
