@@ -1,6 +1,6 @@
 package lerna.management.stats
 
-import akka.actor.ActorSystem
+import akka.actor.{ ActorSystem, ClassicActorSystemProvider }
 import kamon.module.MetricReporter
 import lerna.log.AppLogging
 import lerna.util.tenant.Tenant
@@ -37,4 +37,7 @@ object Metrics {
     new MetricsImpl(system, tenants)
   }
 
+  def apply(system: ClassicActorSystemProvider, tenants: Set[Tenant]): Metrics = {
+    apply(system.classicSystem, tenants)
+  }
 }

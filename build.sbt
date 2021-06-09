@@ -280,7 +280,8 @@ lazy val lernaManagement = lernaModule("lerna-management")
       Dependencies.Akka.actor,
       Dependencies.Kamon.core,
       Dependencies.Kamon.systemMetrics,
-      Dependencies.Akka.testKit % Test,
+      Dependencies.Akka.testKit    % Test,
+      Dependencies.Akka.actorTyped % Test,
     ),
   )
 
