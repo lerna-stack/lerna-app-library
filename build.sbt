@@ -354,7 +354,7 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
     libraryDependencies ++= Seq(
       Dependencies.DataStax.cassandraDriverCore,
       Dependencies.Akka.actor,
-      Dependencies.Akka.testKit % Test,
+      Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
 

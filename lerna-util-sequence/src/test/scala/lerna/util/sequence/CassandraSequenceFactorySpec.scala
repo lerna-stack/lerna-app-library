@@ -1,9 +1,10 @@
 package lerna.util.sequence
 
 import java.util.UUID
-
 import akka.actor.ActorSystem
 import com.typesafe.config.{ Config, ConfigFactory }
+import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
+import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 
 import scala.concurrent.Future
@@ -203,4 +204,47 @@ class CassandraSequenceFactorySpec
     }
   }
 
+}
+
+object CassandraSequenceFactoryTypedSpec {
+  class TestSequenceFactory(
+      val system: akka.actor.typed.ActorSystem[Nothing],
+      val config: Config,
+      val seqId: String = UUID.randomUUID().toString,
+      val maxSequence: BigInt = 9999999,
+      val sequenceCacheSize: Int = 11,
+      val supportedTenants: Seq[Tenant] = Seq(tenant),
+  ) extends CassandraSequenceFactory
+
+  private implicit val tenant: Tenant = new Tenant {
+    override def id: String = "dummy"
+  }
+
+  implicit private val config: Config = ConfigFactory
+    .parseString(s"""
+         | akka.actor {
+         |   provider = local
+         | }
+         | akka.test.default-timeout = 10s
+         | lerna.util.sequence {
+         |   node-id = 1
+         |   max-node-id = 9
+         |   cassandra.tenants.${tenant.id} = $${lerna.util.sequence.cassandra.default}
+         | }
+         | """.stripMargin)
+    .withFallback(ConfigFactory.defaultReferenceUnresolved()).resolve()
+
+}
+
+class CassandraSequenceFactoryTypedSpec
+    extends ScalaTestWithTypedActorTestKit(CassandraSequenceFactoryTypedSpec.config)
+    with LernaBaseSpec {
+  import CassandraSequenceFactoryTypedSpec._
+
+  "CassandraSequenceFactory" can {
+    "be created using typed ActorSystem" in {
+      val typedSystem: akka.actor.typed.ActorSystem[Nothing] = system
+      new TestSequenceFactory(typedSystem, config) // 例外が throw されずインスタンス生成に成功する
+    }
+  }
 }
