@@ -3,14 +3,14 @@ package lerna.util.sequence
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-import akka.actor.ActorSystem
+import akka.actor.ClassicActorSystemProvider
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.Config
 import lerna.log.AppLogging
 import lerna.util.tenant.Tenant
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContextExecutor, Future }
 
 /** A sequence factory using Cassandra
   *
@@ -58,7 +58,7 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
 
   /** The actor system that is used for creating internal actors
     */
-  val system: ActorSystem
+  val system: ClassicActorSystemProvider
 
   /** The configuration that is used for reading settings
     */
@@ -84,12 +84,12 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
 
   private[this] implicit val generateTimeout: Timeout = Timeout(sequenceConfig.generateTimeout)
 
-  import system.dispatcher
+  private[this] implicit def ec: ExecutionContextExecutor = system.classicSystem.dispatcher
 
   private[this] def encode(str: String) = URLEncoder.encode(str, StandardCharsets.UTF_8.name)
 
   private[this] val sequenceFactoryMap = supportedTenants.map { implicit tenant =>
-    val actor = system.actorOf(
+    val actor = system.classicSystem.actorOf(
       SequenceFactorySupervisor
         .props(seqId, maxSequenceValue = maxSequence, reservationAmount = sequenceCacheSize),
       name = encode(s"SequenceFactory-$seqId-${tenant.id}"),
