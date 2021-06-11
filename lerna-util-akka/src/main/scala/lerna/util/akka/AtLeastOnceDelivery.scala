@@ -1,12 +1,24 @@
 package lerna.util.akka
 
 import akka.actor.typed.scaladsl.adapter._
-import akka.actor.{ typed, Actor, ActorRef, ActorSystem, Cancellable, NoSerializationVerificationNeeded, Props }
+import akka.actor.{
+  typed,
+  Actor,
+  ActorRef,
+  ActorSystem,
+  Cancellable,
+  ExtendedActorSystem,
+  Extension,
+  ExtensionId,
+  NoSerializationVerificationNeeded,
+  Props,
+}
 import akka.util.Timeout
 import lerna.log.AppActorLogging
 import lerna.util.time.JavaDurationConverters._
 import lerna.util.trace.RequestContext
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
@@ -91,7 +103,7 @@ object AtLeastOnceDelivery {
       message: (typed.ActorRef[Reply], typed.ActorRef[Confirm]) => Command,
   )(implicit requestContext: RequestContext, system: typed.ActorSystem[_], timeout: Timeout): Future[Reply] = {
     import akka.actor.typed.scaladsl.AskPattern._
-    val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic)).toTyped
+    val atLeastOnceDeliveryProxy = AtLeastOnceDeliveryExtensionForTyped(system).createActor(destination).toTyped
     atLeastOnceDeliveryProxy.ask[Reply](replyTo => message(replyTo, atLeastOnceDeliveryProxy))
   }
 
@@ -117,7 +129,7 @@ object AtLeastOnceDelivery {
       destination: typed.ActorRef[Command],
       message: typed.ActorRef[Confirm] => Command,
   )(implicit requestContext: RequestContext, system: typed.ActorSystem[_]): Unit = {
-    val atLeastOnceDeliveryProxy = system.toClassic.actorOf(AtLeastOnceDelivery.props(destination.toClassic))
+    val atLeastOnceDeliveryProxy = AtLeastOnceDeliveryExtensionForTyped(system).createActor(destination)
     atLeastOnceDeliveryProxy ! message(atLeastOnceDeliveryProxy)
   }
 
@@ -152,6 +164,25 @@ object AtLeastOnceDelivery {
 
   private def props(destination: ActorRef)(implicit requestContext: RequestContext) =
     Props(new AtLeastOnceDelivery(destination))
+
+  private object AtLeastOnceDeliveryExtensionForTyped extends ExtensionId[AtLeastOnceDeliveryExtensionForTyped] {
+    override def createExtension(system: ExtendedActorSystem): AtLeastOnceDeliveryExtensionForTyped =
+      new AtLeastOnceDeliveryExtensionForTyped(system)
+  }
+
+  private class AtLeastOnceDeliveryExtensionForTyped(system: ExtendedActorSystem) extends Extension {
+    private val counter = new AtomicInteger()
+    private def name()  = s"${this.getClass.getName}_${counter.getAndIncrement().toString}"
+
+    /** system Actor として AtLeastOnceDelivery Actor を作成する
+      *
+      * `new typed.ActorSystem()` で作成された system を使うと `system.toClassic.actorOf` で Actor を作れない問題対策。
+      * system.toClassic.actorOf が使えるのは元々が classic ActorSystem の場合のみ。
+      * Extension 化し ExtendedActorSystem を取得することで、 Props から system Actor を作成する
+      */
+    def createActor[Command](destination: typed.ActorRef[Command])(implicit requestContext: RequestContext): ActorRef =
+      system.systemActorOf(AtLeastOnceDelivery.props(destination.toClassic), name())
+  }
 }
 
 /** 到達保証用のActor<br>
