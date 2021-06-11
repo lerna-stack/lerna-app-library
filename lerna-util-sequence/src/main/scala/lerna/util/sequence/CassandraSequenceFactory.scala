@@ -4,7 +4,9 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 import akka.actor.ClassicActorSystemProvider
-import akka.pattern.ask
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
 import akka.util.Timeout
 import com.typesafe.config.Config
 import lerna.log.AppLogging
@@ -60,6 +62,8 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
     */
   val system: ClassicActorSystemProvider
 
+  implicit private def typedSystem: ActorSystem[Nothing] = system.classicSystem.toTyped
+
   /** The configuration that is used for reading settings
     */
   val config: Config
@@ -89,9 +93,9 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
   private[this] def encode(str: String) = URLEncoder.encode(str, StandardCharsets.UTF_8.name)
 
   private[this] val sequenceFactoryMap = supportedTenants.map { implicit tenant =>
-    val actor = system.classicSystem.actorOf(
+    val actor = typedSystem.systemActorOf(
       SequenceFactorySupervisor
-        .props(seqId, maxSequenceValue = maxSequence, reservationAmount = sequenceCacheSize),
+        .apply(seqId, maxSequenceValue = maxSequence, reservationAmount = sequenceCacheSize),
       name = encode(s"SequenceFactory-$seqId-${tenant.id}"),
     )
 
@@ -102,8 +106,9 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
     sequenceFactoryMap
       .get(tenant)
       .map { sequenceFactory =>
-        (sequenceFactory ? SequenceFactoryWorker.GenerateSequence(subId))
-          .mapTo[SequenceFactoryWorker.SequenceGenerated].map(_.value)
+        sequenceFactory
+          .ask(replyTo => SequenceFactoryWorker.GenerateSequence(subId, replyTo))
+          .map(_.value)
       }
       .getOrElse {
         // `supportedTenants` の値は外部に漏れるとまずい場合があるので message に入れていない
