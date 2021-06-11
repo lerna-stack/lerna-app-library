@@ -10,7 +10,6 @@ import akka.actor.{
   ExtendedActorSystem,
   Extension,
   ExtensionId,
-  ExtensionIdProvider,
   NoSerializationVerificationNeeded,
   Props,
 }
@@ -166,13 +165,9 @@ object AtLeastOnceDelivery {
   private def props(destination: ActorRef)(implicit requestContext: RequestContext) =
     Props(new AtLeastOnceDelivery(destination))
 
-  private object AtLeastOnceDeliveryExtensionForTyped
-      extends ExtensionId[AtLeastOnceDeliveryExtensionForTyped]
-      with ExtensionIdProvider {
+  private object AtLeastOnceDeliveryExtensionForTyped extends ExtensionId[AtLeastOnceDeliveryExtensionForTyped] {
     override def createExtension(system: ExtendedActorSystem): AtLeastOnceDeliveryExtensionForTyped =
       new AtLeastOnceDeliveryExtensionForTyped(system)
-
-    override def lookup(): ExtensionId[_ <: Extension] = this
   }
 
   private class AtLeastOnceDeliveryExtensionForTyped(system: ExtendedActorSystem) extends Extension {
