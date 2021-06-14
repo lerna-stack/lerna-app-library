@@ -1,7 +1,8 @@
 package lerna.management.stats
 
-import akka.actor.{ ActorRef, ActorSystem }
-import akka.pattern.ask
+import akka.actor.{ typed, ActorSystem }
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
 import akka.util.Timeout
 import com.typesafe.config.Config
 import kamon.Kamon
@@ -23,17 +24,18 @@ private[stats] final case class SettingItem(key: MetricsKey, name: String, tags:
   ),
 )
 private[stats] class MetricsImpl(system: ActorSystem, tenants: Set[Tenant]) extends Metrics {
+  implicit private val typedSystem: typed.ActorSystem[Nothing] = system.toTyped
 
   private val kamonModuleName            = "lerna-app-library-metrics"
   private var settings: Set[SettingItem] = readSettings(system.settings.config)
-  private val actor: ActorRef            = system.actorOf(MetricsActor.props())
+  private val actor                      = typedSystem.systemActorOf(MetricsActor(), name = this.getClass.getName)
 
   implicit lazy val timeout: Timeout = Timeout(3.seconds)
 
   Kamon.registerModule(kamonModuleName, this)
 
   override def getMetrics(key: MetricsKey): Future[Option[MetricsValue]] = {
-    (actor ? GetMetrics(key)).mapTo[Option[MetricsValue]]
+    actor.ask(replyTo => GetMetrics(key, replyTo))
   }
 
   override def reportPeriodSnapshot(snapshot: PeriodSnapshot): Unit = {
