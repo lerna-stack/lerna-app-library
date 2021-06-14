@@ -82,7 +82,7 @@ object AtLeastOnceDelivery {
   }
 
   /** Send the message asynchronously and return a [[scala.concurrent.Future]] holding the reply message.
-    * If no message is received within `timeout`, the [[scala.concurrent.Future]] holding an [[akka.pattern.AskTimeoutException]] is returned.
+    * If no message is received within `timeout`, the [[scala.concurrent.Future]] holding an [[java.util.concurrent.TimeoutException]] is returned.
     * This behavior is the same as Akka's ask pattern, but this method has some different behavior like below.
     *
     * The sender waits for a reply message of the sent message until a specific timeout (called `redeliver-interval`) is reached.
