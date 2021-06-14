@@ -1,7 +1,6 @@
 package lerna.util.akka
 
 import java.util.concurrent.atomic.AtomicInteger
-
 import akka.actor.ActorSystem
 import akka.actor.testkit.typed.scaladsl.FishingOutcomes
 import akka.actor.typed.ActorRef
@@ -111,6 +110,19 @@ class AtLeastOnceDeliverySpec
         }
 
         destinationProbe.expectNoMessage()
+      }
+    }
+
+    "ask-timeout時間経過しても 結果が帰ってこなかった場合 Future.failed(AskTimeoutException) となる" in {
+      implicit val askTimeout: Timeout = 100.milliseconds
+
+      val destinationProbe = TestProbe()
+      val requestMessage   = RequestMessage(s"request-${generateUniqueNumber().toString}")
+
+      val result = AtLeastOnceDelivery.askTo(destinationProbe.ref, requestMessage)
+
+      whenReady(result.failed) { throwable =>
+        throwable shouldBe a[akka.pattern.AskTimeoutException]
       }
     }
   }
@@ -291,6 +303,23 @@ class AtLeastOnceDeliveryTypedSpec
         expect(assertionError.getMessage.startsWith("timeout"))
 
         destinationProbe.expectNoMessage()
+      }
+    }
+
+    "ask-timeout時間経過しても 結果が帰ってこなかった場合 Future.failed(TimeoutException) となる" in {
+      val askTimeout: Timeout = 100.milliseconds
+
+      val destinationProbe = testKit.createTestProbe[RequestMessage]()
+      val requestMessage   = s"request-${generateUniqueNumber().toString}"
+
+      val result = AtLeastOnceDelivery.askTo(destinationProbe.ref, RequestMessage(requestMessage, _, _))(
+        requestContext,
+        system,
+        askTimeout,
+      )
+
+      whenReady(result.failed) { throwable =>
+        throwable shouldBe a[java.util.concurrent.TimeoutException]
       }
     }
   }
