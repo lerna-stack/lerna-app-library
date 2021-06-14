@@ -1,6 +1,6 @@
 package lerna.http
 
-import akka.actor.ActorSystem
+import akka.actor.{ ActorSystem, ClassicActorSystemProvider }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import akka.pattern.after
@@ -8,15 +8,16 @@ import lerna.log.AppLogging
 import lerna.util.trace.RequestContext
 
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ Future, TimeoutException }
+import scala.concurrent.{ ExecutionContextExecutor, Future, TimeoutException }
 import scala.util.{ Failure, Success }
 
 /** A trait that provides sending an HTTP request with logging and timeout
   */
 trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLogging =>
 
-  implicit val system: ActorSystem
-  import system.dispatcher
+  implicit val system: ClassicActorSystemProvider
+  implicit private def classicSystem: ActorSystem         = system.classicSystem
+  private[this] implicit def ec: ExecutionContextExecutor = classicSystem.dispatcher
 
   val scope: String
 
@@ -54,7 +55,7 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
       .firstCompletedOf(
         Seq(
           Http().singleRequest(req, settings = generateRequestSetting(useProxy)).flatMap(_.toStrict(timeout)),
-          after(timeout, system.scheduler)(
+          after(timeout, classicSystem.scheduler)(
             Future.failed(new TimeoutException(s"Request timed out after [${timeout.toString}]")),
           ),
         ),
