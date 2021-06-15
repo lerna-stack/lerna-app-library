@@ -19,7 +19,8 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
   def apply(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
       tenant: Tenant,
   ): Behavior[Command] = Behaviors.setup { context =>
-    Behaviors.withStash(capacity = Int.MaxValue /* FIXME */ ) { buffer =>
+    val capacity = context.system.settings.config.getInt("lerna.util.sequence.store.stash-capacity")
+    Behaviors.withStash(capacity) { buffer =>
       withLogger { logger =>
         new SequenceStore(
           sequenceId = sequenceId,

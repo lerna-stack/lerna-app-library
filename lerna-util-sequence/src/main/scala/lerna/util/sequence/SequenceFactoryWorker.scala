@@ -20,7 +20,8 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
       idleTimeout: FiniteDuration,
       sequenceSubId: Option[String],
   )(implicit tenant: Tenant): Behavior[Command] = Behaviors.setup { context =>
-    Behaviors.withStash(capacity = Int.MaxValue /* FIXME */ ) { buffer =>
+    val capacity = context.system.settings.config.getInt("lerna.util.sequence.worker.stash-capacity")
+    Behaviors.withStash(capacity) { buffer =>
       withLogger { logger =>
         new SequenceFactoryWorker(
           maxSequenceValue = maxSequenceValue,
