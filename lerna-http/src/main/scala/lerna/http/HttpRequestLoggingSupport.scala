@@ -15,7 +15,7 @@ import scala.util.{ Failure, Success }
   */
 trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLogging =>
 
-  implicit val system: ClassicActorSystemProvider
+  val system: ClassicActorSystemProvider
   implicit private def classicSystem: ActorSystem         = system.classicSystem
   private[this] implicit def ec: ExecutionContextExecutor = classicSystem.dispatcher
 
