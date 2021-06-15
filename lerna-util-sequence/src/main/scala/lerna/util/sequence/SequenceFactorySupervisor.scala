@@ -76,16 +76,10 @@ private[sequence] final class SequenceFactorySupervisor(
 
     // SupervisorStrategy
     // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
-    behavior = Behaviors.supervise(behavior).onFailure[NoHostAvailableException](SupervisorStrategy.restart)
-    behavior = Behaviors.supervise(behavior).onFailure[UnsupportedFeatureException](SupervisorStrategy.restart)
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
-    // コーディネーターに何らかの問題が起きている可能性がある。再接続して回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[OperationTimedOutException](SupervisorStrategy.restart)
-    // コネクションに問題がある。再接続して回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[ConnectionException](SupervisorStrategy.restart)
     behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
 
     context.spawn(
