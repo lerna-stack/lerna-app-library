@@ -2,7 +2,6 @@ package lerna.util.sequence
 
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
 import akka.actor.typed.{ ActorRef, Behavior, SupervisorStrategy }
-import com.datastax.driver.core.exceptions._
 import lerna.util.sequence.SequenceStore.Command
 import lerna.util.tenant.Tenant
 
@@ -50,37 +49,25 @@ private[sequence] final class SequenceFactorySupervisor(
 
   private def createWorker(sequenceSubId: Option[String]): ActorRef[SequenceFactoryWorker.Command] =
     context.spawn(
-      Behaviors
-        .supervise(
-          SequenceFactoryWorker.apply(
-            maxSequenceValue = maxSequenceValue,
-            firstValue = config.firstValue,
-            incrementStep = config.incrementStep,
-            reservationAmount = reservationAmount,
-            sequenceStore = store,
-            idleTimeout = config.workerIdleTimeout,
-            sequenceSubId = sequenceSubId,
-          ),
-        ).onFailure[Exception](SupervisorStrategy.restart),
+      SequenceFactoryWorker.apply(
+        maxSequenceValue = maxSequenceValue,
+        firstValue = config.firstValue,
+        incrementStep = config.incrementStep,
+        reservationAmount = reservationAmount,
+        sequenceStore = store,
+        idleTimeout = config.workerIdleTimeout,
+        sequenceSubId = sequenceSubId,
+      ),
       workerNameOf(sequenceSubId),
     )
 
   private def createSequenceStore(): ActorRef[SequenceStore.Command] = {
-    @SuppressWarnings(Array("org.wartremover.warts.Var"))
-    var behavior: Behavior[Command] = SequenceStore.apply(
+    val behavior: Behavior[Command] = SequenceStore.apply(
       sequenceId = sequenceId,
       nodeId = config.nodeId,
       incrementStep = config.incrementStep,
       config = config.cassandraConfig,
     )
-
-    // SupervisorStrategy
-    // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
-    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
-    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
-    behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
 
     context.spawn(
       behavior,

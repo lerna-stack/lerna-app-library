@@ -5,6 +5,7 @@ import akka.actor.NoSerializationVerificationNeeded
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
 import akka.actor.typed._
 import com.datastax.driver.core._
+import com.datastax.driver.core.exceptions.{ ReadTimeoutException, WriteTimeoutException }
 import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
 import lerna.util.sequence.FutureConverters.ListenableFutureConverter
@@ -18,21 +19,33 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
 
   def apply(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
       tenant: Tenant,
-  ): Behavior[Command] = Behaviors.setup { context =>
-    val capacity = context.system.settings.config.getInt("lerna.util.sequence.store.stash-capacity")
-    Behaviors.withStash(capacity) { buffer =>
-      withLogger { logger =>
-        new SequenceStore(
-          sequenceId = sequenceId,
-          nodeId = nodeId,
-          incrementStep = incrementStep,
-          config = config,
-          context,
-          buffer,
-          logger,
-        ).receive
+  ): Behavior[Command] = {
+    @SuppressWarnings(Array("org.wartremover.warts.Var"))
+    var behavior: Behavior[Command] = Behaviors.setup { context =>
+      val capacity = context.system.settings.config.getInt("lerna.util.sequence.store.stash-capacity")
+      Behaviors.withStash(capacity) { buffer =>
+        withLogger { logger =>
+          new SequenceStore(
+            sequenceId = sequenceId,
+            nodeId = nodeId,
+            incrementStep = incrementStep,
+            config = config,
+            context,
+            buffer,
+            logger,
+          ).receive
+        }
       }
     }
+
+    // SupervisorStrategy
+    // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
+    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
+    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
+    behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
+    behavior
   }
 
   sealed trait Command            extends NoSerializationVerificationNeeded

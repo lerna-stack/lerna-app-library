@@ -2,7 +2,7 @@ package lerna.util.sequence
 
 import akka.actor.typed
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ ActorRef, Behavior, SupervisorStrategy }
 import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
 import lerna.util.tenant.Tenant
@@ -19,25 +19,28 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
       sequenceStore: ActorRef[SequenceStore.Command],
       idleTimeout: FiniteDuration,
       sequenceSubId: Option[String],
-  )(implicit tenant: Tenant): Behavior[Command] = Behaviors.setup { context =>
-    val capacity = context.system.settings.config.getInt("lerna.util.sequence.worker.stash-capacity")
-    Behaviors.withStash(capacity) { buffer =>
-      withLogger { logger =>
-        new SequenceFactoryWorker(
-          maxSequenceValue = maxSequenceValue,
-          firstValue = firstValue,
-          incrementStep = incrementStep,
-          reservationAmount = reservationAmount,
-          sequenceStore = sequenceStore,
-          idleTimeout = idleTimeout,
-          sequenceSubId = sequenceSubId,
-          context,
-          buffer,
-          logger,
-        ).receive
+  )(implicit tenant: Tenant): Behavior[Command] = Behaviors
+    .supervise[Command] {
+      Behaviors.setup { context =>
+        val capacity = context.system.settings.config.getInt("lerna.util.sequence.worker.stash-capacity")
+        Behaviors.withStash(capacity) { buffer =>
+          withLogger { logger =>
+            new SequenceFactoryWorker(
+              maxSequenceValue = maxSequenceValue,
+              firstValue = firstValue,
+              incrementStep = incrementStep,
+              reservationAmount = reservationAmount,
+              sequenceStore = sequenceStore,
+              idleTimeout = idleTimeout,
+              sequenceSubId = sequenceSubId,
+              context,
+              buffer,
+              logger,
+            ).receive
+          }
+        }
       }
-    }
-  }
+    }.onFailure[Exception](SupervisorStrategy.restart)
 
   sealed trait Command
   final case object Initialize extends Command
