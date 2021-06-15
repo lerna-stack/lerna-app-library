@@ -2,7 +2,7 @@ package lerna.http
 
 import java.net.InetSocketAddress
 
-import akka.actor.ActorSystem
+import akka.actor.ClassicActorSystemProvider
 import akka.http.scaladsl.ClientTransport
 import akka.http.scaladsl.model.headers
 import akka.http.scaladsl.settings.{ ClientConnectionSettings, ConnectionPoolSettings }
@@ -17,11 +17,11 @@ trait HttpRequestProxySupport {
 
   /** The [[akka.actor.ActorSystem]] that is used for extracting settings.
     */
-  val system: ActorSystem
+  val system: ClassicActorSystemProvider
 
-  private val baseConnectionPoolSettings = ConnectionPoolSettings(system)
+  private val baseConnectionPoolSettings = ConnectionPoolSettings(system.classicSystem)
 
-  private val tenantsConfig                        = system.settings.config.getConfig("lerna.http.proxy.tenants")
+  private val tenantsConfig                        = system.classicSystem.settings.config.getConfig("lerna.http.proxy.tenants")
   private def proxyConfig(implicit tenant: Tenant) = tenantsConfig.getConfig(s"${tenant.id}")
 
   private def host(implicit tenant: Tenant) = proxyConfig.getString("host")
@@ -43,7 +43,7 @@ trait HttpRequestProxySupport {
     */
   protected def generateRequestSetting(useProxy: Boolean)(implicit tenant: Tenant): ConnectionPoolSettings = {
     if (useProxy) {
-      val clientConnectionSettings = ClientConnectionSettings(system).withTransport(httpsProxyTransport)
+      val clientConnectionSettings = ClientConnectionSettings(system.classicSystem).withTransport(httpsProxyTransport)
       baseConnectionPoolSettings.withConnectionSettings(clientConnectionSettings)
     } else {
       baseConnectionPoolSettings
