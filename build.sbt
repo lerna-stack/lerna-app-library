@@ -277,10 +277,10 @@ lazy val lernaManagement = lernaModule("lerna-management")
   .settings(wartremoverSettings, lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
-      Dependencies.Akka.actor,
+      Dependencies.Akka.actorTyped,
       Dependencies.Kamon.core,
       Dependencies.Kamon.systemMetrics,
-      Dependencies.Akka.testKit % Test,
+      Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
 
@@ -373,8 +373,8 @@ lazy val lernaHTTP = lernaModule("lerna-http")
       Dependencies.Akka.stream,
       Dependencies.AkkaHTTP.http,
       Dependencies.AkkaHTTP.sprayJson,
-      Dependencies.Akka.testKit         % Test,
-      Dependencies.AkkaHTTP.httpTestKit % Test,
+      Dependencies.Akka.actorTestKitTyped % Test,
+      Dependencies.AkkaHTTP.httpTestKit   % Test,
     ),
   )
 
