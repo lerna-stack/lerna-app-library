@@ -1,0 +1,15 @@
+# typed ActorSystem 対応
+# ClassicActorSystemProvider は typed/classic 両方の ActorSystem が継承しているので compileエラーにはならない
+# ※ Akka 2.6 以上のみ対応
+
+# akka.actor.ActorSystem を使っている状況で、 Tenant を継承した別の trait 型(例: AppTenant)を使用していると Set[AppTenant] が 自動で Set[Tenant] にならず、コンパイルエラーになる
+# 型を明示することで回避可能だが、 lib 側の akka.actor.ActorSystem を受け取る apply method を削除すると楽になるため ActorSystem を受け取る apply method を削除
+# [error]      overloaded method value apply with alternatives:
+# [error]        (system: akka.actor.ClassicActorSystemProvider,tenants: Set[lerna.util.tenant.Tenant])lerna.management.stats.Metrics <and>
+# [error]        (system: akka.actor.ActorSystem,tenants: Set[lerna.util.tenant.Tenant])lerna.management.stats.Metrics
+
+
+# static method apply(akka.actor.ActorSystem,scala.collection.immutable.Set)lerna.management.stats.Metrics in interface lerna.management.stats.Metrics's type is different in current version, where it is (akka.actor.ClassicActorSystemProvider,scala.collection.immutable.Set)lerna.management.stats.Metrics instead of (akka.actor.ActorSystem,scala.collection.immutable.Set)lerna.management.stats.Metrics
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.management.stats.Metrics.apply")
+# method apply(akka.actor.ActorSystem,scala.collection.immutable.Set)lerna.management.stats.Metrics in object lerna.management.stats.Metrics's type is different in current version, where it is (akka.actor.ClassicActorSystemProvider,scala.collection.immutable.Set)lerna.management.stats.Metrics instead of (akka.actor.ActorSystem,scala.collection.immutable.Set)lerna.management.stats.Metrics
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.management.stats.Metrics.apply")

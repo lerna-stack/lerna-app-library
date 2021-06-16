@@ -1,0 +1,8 @@
+# typed ActorSystem 対応
+# ClassicActorSystemProvider は typed/classic 両方の ActorSystem が継承しているので compileエラーにはならない
+# ※ Akka 2.6 以上のみ対応
+
+# abstract method system()akka.actor.ActorSystem in interface lerna.http.HttpRequestProxySupport has a different result type in current version, where it is akka.actor.ClassicActorSystemProvider rather than akka.actor.ActorSystem
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.http.HttpRequestProxySupport.system")
+# abstract method system()akka.actor.ClassicActorSystemProvider in interface lerna.http.HttpRequestProxySupport is present only in current version
+ProblemFilters.exclude[ReversedMissingMethodProblem]("lerna.http.HttpRequestProxySupport.system")
