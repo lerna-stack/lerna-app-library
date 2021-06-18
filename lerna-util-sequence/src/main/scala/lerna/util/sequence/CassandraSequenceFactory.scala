@@ -88,7 +88,7 @@ abstract class CassandraSequenceFactory extends SequenceFactory with AppLogging 
 
   private[this] implicit val generateTimeout: Timeout = Timeout(sequenceConfig.generateTimeout)
 
-  private[this] implicit def ec: ExecutionContextExecutor = system.classicSystem.dispatcher
+  private[this] implicit def ec: ExecutionContextExecutor = typedSystem.executionContext
 
   private[this] def encode(str: String) = URLEncoder.encode(str, StandardCharsets.UTF_8.name)
 
