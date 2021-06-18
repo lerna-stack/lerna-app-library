@@ -33,7 +33,7 @@ private[sequence] final class SequenceFactorySupervisor(
 
   private[this] val store = createSequenceStore()
 
-  def createBehavior(): Behaviors.Receive[SequenceFactoryWorker.GenerateSequence] =
+  def createBehavior(): Behavior[SequenceFactoryWorker.GenerateSequence] =
     Behaviors.receiveMessage[SequenceFactoryWorker.GenerateSequence] { command =>
       val sequenceSubId = command.sequenceSubId
       val worker =

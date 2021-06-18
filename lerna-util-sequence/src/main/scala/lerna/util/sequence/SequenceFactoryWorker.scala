@@ -79,7 +79,7 @@ private[sequence] final class SequenceFactoryWorker(
   // 残りが予約したシーケンスの 1/2 以下になったら予約を開始
   private[this] val reservationFactor = 2
 
-  def createBehavior(): Behaviors.Receive[Command] = {
+  def createBehavior(): Behavior[Command] = {
     context.self ! Initialize
     notReady
   }
@@ -109,7 +109,7 @@ private[sequence] final class SequenceFactoryWorker(
   }
 
   @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity", "org.wartremover.warts.Recursion"))
-  private[this] def ready(implicit sequenceContext: SequenceContext): Behaviors.Receive[Command] =
+  private[this] def ready(implicit sequenceContext: SequenceContext): Behavior[Command] =
     Behaviors.receiveMessage[Command] {
       case msg: GenerateSequence =>
         if (msg.sequenceSubId === sequenceSubId) {
@@ -158,7 +158,7 @@ private[sequence] final class SequenceFactoryWorker(
     }
 
   @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity", "org.wartremover.warts.Recursion"))
-  private[this] def reserving(implicit sequenceContext: SequenceContext): Behaviors.Receive[Command] =
+  private[this] def reserving(implicit sequenceContext: SequenceContext): Behavior[Command] =
     Behaviors.receiveMessage {
       case msg: GenerateSequence =>
         if (msg.sequenceSubId === sequenceSubId) {
@@ -197,7 +197,7 @@ private[sequence] final class SequenceFactoryWorker(
       case WrappedSequenceStoreResponse(_: SequenceStore.SequenceReset)           => Behaviors.unhandled
     }
 
-  private[this] def resetting: Behaviors.Receive[Command] = Behaviors.receiveMessage[Command] {
+  private[this] def resetting: Behavior[Command] = Behaviors.receiveMessage[Command] {
     case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReset) =>
       logger.warn("reset sequence: {}", msg.maxReservedValue)
       stashBuffer.unstashAll(ready(SequenceContext(msg.maxReservedValue, nextValue = firstValue)))

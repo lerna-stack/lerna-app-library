@@ -131,7 +131,7 @@ private[sequence] final class SequenceStore(
 
   val statements = new CassandraStatements(config)
 
-  def createBehavior(): Behaviors.Receive[Command] = {
+  def createBehavior(): Behavior[Command] = {
     context.self ! OpenSession
     notReady
   }
