@@ -17,7 +17,7 @@ private[sequence] object SequenceFactorySupervisor {
           maxSequenceValue = maxSequenceValue,
           reservationAmount = reservationAmount,
           context,
-        ).receive
+        ).createBehavior()
       },
     ).onFailure[Exception](SupervisorStrategy.restart)
 }
@@ -33,7 +33,7 @@ private[sequence] final class SequenceFactorySupervisor(
 
   private[this] val store = createSequenceStore()
 
-  def receive: Behaviors.Receive[SequenceFactoryWorker.GenerateSequence] =
+  def createBehavior(): Behaviors.Receive[SequenceFactoryWorker.GenerateSequence] =
     Behaviors.receiveMessage[SequenceFactoryWorker.GenerateSequence] { command =>
       val sequenceSubId = command.sequenceSubId
       val worker =

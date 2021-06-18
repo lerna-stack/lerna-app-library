@@ -36,7 +36,7 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
               context,
               buffer,
               logger,
-            ).receive
+            ).createBehavior()
           }
         }
       }
@@ -79,7 +79,7 @@ private[sequence] final class SequenceFactoryWorker(
   // 残りが予約したシーケンスの 1/2 以下になったら予約を開始
   private[this] val reservationFactor = 2
 
-  def receive: Behaviors.Receive[Command] = {
+  def createBehavior(): Behaviors.Receive[Command] = {
     context.self ! Initialize
     notReady
   }

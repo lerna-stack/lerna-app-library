@@ -33,7 +33,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
             context,
             buffer,
             logger,
-          ).receive
+          ).createBehavior()
         }
       }
     }
@@ -131,7 +131,7 @@ private[sequence] final class SequenceStore(
 
   val statements = new CassandraStatements(config)
 
-  def receive: Behaviors.Receive[Command] = {
+  def createBehavior(): Behaviors.Receive[Command] = {
     context.self ! OpenSession
     notReady
   }
