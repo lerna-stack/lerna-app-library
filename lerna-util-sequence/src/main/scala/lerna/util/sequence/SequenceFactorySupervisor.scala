@@ -39,8 +39,8 @@ private[sequence] final class SequenceFactorySupervisor(
       val worker =
         context
           .child(workerNameOf(sequenceSubId))
-          // FIXME: `asInstanceOf` https://doc.akka.io/docs/akka/current/typed/from-classic.html#actorcontext-children
-          .map(_.asInstanceOf[ActorRef[SequenceFactoryWorker.Command]])
+          // FIXME: `unsafeUpcast` https://doc.akka.io/docs/akka/current/typed/from-classic.html#actorcontext-children
+          .map(_.unsafeUpcast[SequenceFactoryWorker.Command])
           .getOrElse(createWorker(sequenceSubId))
 
       worker ! command
