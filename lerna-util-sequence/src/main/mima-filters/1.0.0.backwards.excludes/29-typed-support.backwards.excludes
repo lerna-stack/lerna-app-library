@@ -1,0 +1,67 @@
+# typed ActorSystem 対応
+# ClassicActorSystemProvider は typed/classic 両方の ActorSystem が継承しているので compileエラーにはならない
+# ※ Akka 2.6 以上のみ対応
+
+# abstract method system()akka.actor.ActorSystem in class lerna.util.sequence.CassandraSequenceFactory has a different result type in current version, where it is akka.actor.ClassicActorSystemProvider rather than akka.actor.ActorSystem
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.CassandraSequenceFactory.system")
+# abstract method system()akka.actor.ClassicActorSystemProvider in class lerna.util.sequence.CassandraSequenceFactory is present only in current version
+ProblemFilters.exclude[ReversedMissingMethodProblem]("lerna.util.sequence.CassandraSequenceFactory.system")
+
+
+# Behavior 化 にともなう内部 Actor の Message 変更
+# - 同一JVM 内でのみ使用されシリアライズされることはない
+# - ライブラリ(lerna.util.sequence)内部でのみ使用され外部から直接参照されることはない
+# method copy(scala.Option)lerna.util.sequence.SequenceFactoryWorker#GenerateSequence in class lerna.util.sequence.SequenceFactoryWorker#GenerateSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceFactoryWorker#GenerateSequence.copy")
+# method this(scala.Option)Unit in class lerna.util.sequence.SequenceFactoryWorker#GenerateSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceFactoryWorker#GenerateSequence.this")
+# the type hierarchy of object lerna.util.sequence.SequenceFactoryWorker#GenerateSequence is different in current version. Missing types {scala.runtime.AbstractFunction1}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceFactoryWorker$GenerateSequence$")
+# method apply(scala.Option)lerna.util.sequence.SequenceFactoryWorker#GenerateSequence in object lerna.util.sequence.SequenceFactoryWorker#GenerateSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceFactoryWorker#GenerateSequence.apply")
+# method unapply(lerna.util.sequence.SequenceFactoryWorker#GenerateSequence)scala.Option in object lerna.util.sequence.SequenceFactoryWorker#GenerateSequence has a different generic signature in current version, where it is (Llerna/util/sequence/SequenceFactoryWorker$GenerateSequence;)Lscala/Option<Lscala/Tuple2<Lscala/Option<Ljava/lang/String;>;Lakka/actor/typed/ActorRef<Llerna/util/sequence/SequenceFactoryWorker$SequenceGenerated;>;>;>; rather than (Llerna/util/sequence/SequenceFactoryWorker$GenerateSequence;)Lscala/Option<Lscala/Option<Ljava/lang/String;>;>;. See https://github.com/lightbend/mima#incompatiblesignatureproblem
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceFactoryWorker#GenerateSequence.unapply")
+# interface lerna.util.sequence.SequenceStore#DomainEvent does not have a correspondent in current version
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.SequenceStore$DomainEvent")
+# method copy(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#InitialReserveSequence in class lerna.util.sequence.SequenceStore#InitialReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#InitialReserveSequence.copy")
+# method this(scala.math.BigInt,Int,scala.Option)Unit in class lerna.util.sequence.SequenceStore#InitialReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#InitialReserveSequence.this")
+# the type hierarchy of object lerna.util.sequence.SequenceStore#InitialReserveSequence is different in current version. Missing types {scala.runtime.AbstractFunction3}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$InitialReserveSequence$")
+# method apply(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#InitialReserveSequence in object lerna.util.sequence.SequenceStore#InitialReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#InitialReserveSequence.apply")
+# method unapply(lerna.util.sequence.SequenceStore#InitialReserveSequence)scala.Option in object lerna.util.sequence.SequenceStore#InitialReserveSequence has a different generic signature in current version, where it is (Llerna/util/sequence/SequenceStore$InitialReserveSequence;)Lscala/Option<Lscala/Tuple4<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;Lakka/actor/typed/ActorRef<Llerna/util/sequence/SequenceStore$ReservationResponse;>;>;>; rather than (Llerna/util/sequence/SequenceStore$InitialReserveSequence;)Lscala/Option<Lscala/Tuple3<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;>;>;. See https://github.com/lightbend/mima#incompatiblesignatureproblem
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#InitialReserveSequence.unapply")
+# the type hierarchy of class lerna.util.sequence.SequenceStore#InitialSequenceReserved is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$InitialSequenceReserved")
+# the type hierarchy of object lerna.util.sequence.SequenceStore#ReservationFailed is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$ReservationFailed$")
+# method copy(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#ReserveSequence in class lerna.util.sequence.SequenceStore#ReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.copy")
+# method this(scala.math.BigInt,Int,scala.Option)Unit in class lerna.util.sequence.SequenceStore#ReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.this")
+# the type hierarchy of object lerna.util.sequence.SequenceStore#ReserveSequence is different in current version. Missing types {scala.runtime.AbstractFunction3}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$ReserveSequence$")
+# method apply(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#ReserveSequence in object lerna.util.sequence.SequenceStore#ReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.apply")
+# method unapply(lerna.util.sequence.SequenceStore#ReserveSequence)scala.Option in object lerna.util.sequence.SequenceStore#ReserveSequence has a different generic signature in current version, where it is (Llerna/util/sequence/SequenceStore$ReserveSequence;)Lscala/Option<Lscala/Tuple4<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;Lakka/actor/typed/ActorRef<Llerna/util/sequence/SequenceStore$ReservationResponse;>;>;>; rather than (Llerna/util/sequence/SequenceStore$ReserveSequence;)Lscala/Option<Lscala/Tuple3<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;>;>;. See https://github.com/lightbend/mima#incompatiblesignatureproblem
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.unapply")
+# method copy(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#ResetReserveSequence in class lerna.util.sequence.SequenceStore#ResetReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ResetReserveSequence.copy")
+# method this(scala.math.BigInt,Int,scala.Option)Unit in class lerna.util.sequence.SequenceStore#ResetReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ResetReserveSequence.this")
+# the type hierarchy of object lerna.util.sequence.SequenceStore#ResetReserveSequence is different in current version. Missing types {scala.runtime.AbstractFunction3}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$ResetReserveSequence$")
+# method apply(scala.math.BigInt,Int,scala.Option)lerna.util.sequence.SequenceStore#ResetReserveSequence in object lerna.util.sequence.SequenceStore#ResetReserveSequence does not have a correspondent in current version
+ProblemFilters.exclude[DirectMissingMethodProblem]("lerna.util.sequence.SequenceStore#ResetReserveSequence.apply")
+# method unapply(lerna.util.sequence.SequenceStore#ResetReserveSequence)scala.Option in object lerna.util.sequence.SequenceStore#ResetReserveSequence has a different generic signature in current version, where it is (Llerna/util/sequence/SequenceStore$ResetReserveSequence;)Lscala/Option<Lscala/Tuple4<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;Lakka/actor/typed/ActorRef<Llerna/util/sequence/SequenceStore$ReservationResponse;>;>;>; rather than (Llerna/util/sequence/SequenceStore$ResetReserveSequence;)Lscala/Option<Lscala/Tuple3<Lscala/math/BigInt;Ljava/lang/Object;Lscala/Option<Ljava/lang/String;>;>;>;. See https://github.com/lightbend/mima#incompatiblesignatureproblem
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#ResetReserveSequence.unapply")
+# the type hierarchy of class lerna.util.sequence.SequenceStore#SequenceReserved is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$SequenceReserved")
+# the type hierarchy of class lerna.util.sequence.SequenceStore#SequenceReset is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$SequenceReset")
+# the type hierarchy of class lerna.util.sequence.SequenceStore#SessionOpened is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$SessionOpened")
+# the type hierarchy of class lerna.util.sequence.SequenceStore#SessionPrepared is different in current version. Missing types {lerna.util.sequence.SequenceStore$DomainEvent}
+ProblemFilters.exclude[MissingTypesProblem]("lerna.util.sequence.SequenceStore$SessionPrepared")
