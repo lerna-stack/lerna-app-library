@@ -1,81 +1,55 @@
 package lerna.util.sequence
 
-import akka.actor.SupervisorStrategy._
-import akka.actor.{ Actor, ActorRef, OneForOneStrategy, Props, SupervisorStrategy }
-import com.datastax.driver.core.exceptions._
-import lerna.log.AppActorLogging
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior, SupervisorStrategy }
+import lerna.util.sequence.SequenceStore.Command
 import lerna.util.tenant.Tenant
 
 private[sequence] object SequenceFactorySupervisor {
 
-  def props(sequenceId: String, maxSequenceValue: BigInt, reservationAmount: Int)(implicit tenant: Tenant): Props =
-    Props(
-      new SequenceFactorySupervisor(
-        sequenceId = sequenceId,
-        maxSequenceValue = maxSequenceValue,
-        reservationAmount = reservationAmount,
-      ),
-    )
-
+  def apply(sequenceId: String, maxSequenceValue: BigInt, reservationAmount: Int)(implicit
+      tenant: Tenant,
+  ): Behavior[SequenceFactoryWorker.GenerateSequence] = Behaviors
+    .supervise[SequenceFactoryWorker.GenerateSequence](
+      Behaviors.setup { context =>
+        new SequenceFactorySupervisor(
+          sequenceId = sequenceId,
+          maxSequenceValue = maxSequenceValue,
+          reservationAmount = reservationAmount,
+          context,
+        ).createBehavior()
+      },
+    ).onFailure[Exception](SupervisorStrategy.restart)
 }
 
 private[sequence] final class SequenceFactorySupervisor(
     sequenceId: String,
     maxSequenceValue: BigInt,
     reservationAmount: Int,
-)(implicit tenant: Tenant)
-    extends Actor
-    with AppActorLogging {
-
-  import lerna.util.tenant.TenantComponentLogContext.logContext
+    context: ActorContext[SequenceFactoryWorker.GenerateSequence],
+)(implicit tenant: Tenant) {
 
   private[this] val config = new SequenceFactoryConfig(context.system.settings.config)
 
   private[this] val store = createSequenceStore()
 
-  override def receive: Receive = {
-    case command @ SequenceFactoryWorker.GenerateSequence(sequenceSubId) =>
+  def createBehavior(): Behavior[SequenceFactoryWorker.GenerateSequence] =
+    Behaviors.receiveMessage[SequenceFactoryWorker.GenerateSequence] { command =>
+      val sequenceSubId = command.sequenceSubId
       val worker =
         context
           .child(workerNameOf(sequenceSubId))
+          // FIXME: `unsafeUpcast` https://doc.akka.io/docs/akka/current/typed/from-classic.html#actorcontext-children
+          .map(_.unsafeUpcast[SequenceFactoryWorker.Command])
           .getOrElse(createWorker(sequenceSubId))
 
-      worker forward command
-  }
-
-  // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
-  override def supervisorStrategy: SupervisorStrategy =
-    OneForOneStrategy(loggingEnabled = false) {
-      case e: NoHostAvailableException =>
-        logger.warn(e, "Cassandra is not available")
-        Restart
-      case e: UnsupportedFeatureException =>
-        logger.warn(e, "Illegal operation detected")
-        Restart
-      case e: ReadTimeoutException =>
-        // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
-        logger.warn(e, "Read query failed. Resuming SequenceStore")
-        Resume
-      case e: WriteTimeoutException =>
-        // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
-        logger.warn(e, "Write query failed. Resuming SequenceStore")
-        Resume
-      case e: OperationTimedOutException =>
-        // コーディネーターに何らかの問題が起きている可能性がある。再接続して回復することを期待する
-        logger.warn(e, "Query failed. Re-establishing connection")
-        Restart
-      case e: ConnectionException =>
-        // コネクションに問題がある。再接続して回復することを期待する
-        logger.warn(e, "Connection broken. Re-establishing connection")
-        Restart
-      case e =>
-        logger.warn(e, "Unexpected error detected")
-        Restart
+      worker ! command
+      Behaviors.same
     }
 
-  private def createWorker(sequenceSubId: Option[String]): ActorRef =
-    context.actorOf(
-      SequenceFactoryWorker.props(
+  private def createWorker(sequenceSubId: Option[String]): ActorRef[SequenceFactoryWorker.Command] =
+    context.spawn(
+      SequenceFactoryWorker.apply(
         maxSequenceValue = maxSequenceValue,
         firstValue = config.firstValue,
         incrementStep = config.incrementStep,
@@ -87,17 +61,19 @@ private[sequence] final class SequenceFactorySupervisor(
       workerNameOf(sequenceSubId),
     )
 
-  private def createSequenceStore(): ActorRef =
-    context.actorOf(
-      SequenceStore
-        .props(
-          sequenceId = sequenceId,
-          nodeId = config.nodeId,
-          incrementStep = config.incrementStep,
-          config = config.cassandraConfig,
-        ),
+  private def createSequenceStore(): ActorRef[SequenceStore.Command] = {
+    val behavior: Behavior[Command] = SequenceStore.apply(
+      sequenceId = sequenceId,
+      nodeId = config.nodeId,
+      incrementStep = config.incrementStep,
+      config = config.cassandraConfig,
+    )
+
+    context.spawn(
+      behavior,
       s"$sequenceId-store",
     )
+  }
 
   private def workerNameOf(sequenceSubId: Option[String]) =
     s"$sequenceId-worker${sequenceSubId.map(sub => "-" + sub).getOrElse("")}"
