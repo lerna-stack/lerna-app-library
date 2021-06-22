@@ -32,7 +32,7 @@ lazy val `root` = (project in file("."))
   .settings(
     inThisBuild(
       List(
-        version := "2.0.0-f8684d32-SNAPSHOT",
+        version := "2.0.0-80f86b49-SNAPSHOT",
         scalaVersion := scala213,
         scalacOptions ++= Seq(
           "-deprecation",
