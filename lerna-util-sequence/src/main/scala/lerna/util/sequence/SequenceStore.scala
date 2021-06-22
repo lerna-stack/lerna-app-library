@@ -1,54 +1,111 @@
 package lerna.util.sequence
 
 import akka.Done
-import akka.actor.{ Actor, ActorRef, NoSerializationVerificationNeeded, Props, Stash, Status }
-import akka.pattern.pipe
+import akka.actor.NoSerializationVerificationNeeded
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
+import akka.actor.typed._
 import com.datastax.driver.core._
-import lerna.log.AppActorLogging
+import com.datastax.driver.core.exceptions._
+import lerna.log.{ AppLogger, AppTypedActorLogging }
+import lerna.util.lang.Equals._
 import lerna.util.sequence.FutureConverters.ListenableFutureConverter
 import lerna.util.tenant.Tenant
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
+import scala.util.{ Failure, Success }
 
-private[sequence] object SequenceStore {
+private[sequence] object SequenceStore extends AppTypedActorLogging {
 
-  def props(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
+  def apply(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
       tenant: Tenant,
-  ): Props =
-    Props(new SequenceStore(sequenceId = sequenceId, nodeId = nodeId, incrementStep = incrementStep, config = config))
+  ): Behavior[Command] = {
+    @SuppressWarnings(Array("org.wartremover.warts.Var"))
+    var behavior: Behavior[Command] = Behaviors.setup { context =>
+      val capacity = context.system.settings.config.getInt("lerna.util.sequence.store.stash-capacity")
+      Behaviors.withStash(capacity) { buffer =>
+        withLogger { logger =>
+          new SequenceStore(
+            sequenceId = sequenceId,
+            nodeId = nodeId,
+            incrementStep = incrementStep,
+            config = config,
+            context,
+            buffer,
+            logger,
+          ).createBehavior()
+        }
+      }
+    }
+
+    // SupervisorStrategy
+    // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
+    behavior = Behaviors.supervise(behavior).onFailure[NoHostAvailableException](SupervisorStrategy.restart)
+    behavior = Behaviors.supervise(behavior).onFailure[UnsupportedFeatureException](SupervisorStrategy.restart)
+    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
+    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
+    // コーディネーターに何らかの問題が起きている可能性がある。再接続して回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[OperationTimedOutException](SupervisorStrategy.restart)
+    // コネクションに問題がある。再接続して回復することを期待する
+    behavior = Behaviors.supervise(behavior).onFailure[ConnectionException](SupervisorStrategy.restart)
+    behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
+    behavior
+  }
 
   sealed trait Command            extends NoSerializationVerificationNeeded
   private case object OpenSession extends Command
-  final case class InitialReserveSequence(firstValue: BigInt, reservationAmount: Int, sequenceSubId: Option[String])
-      extends Command {
+  final case class InitialReserveSequence(
+      firstValue: BigInt,
+      reservationAmount: Int,
+      sequenceSubId: Option[String],
+      replyTo: ActorRef[ReservationResponse],
+  ) extends Command {
     require(firstValue > 0 && reservationAmount > 0)
   }
-  final case class ReserveSequence(maxReservedValue: BigInt, reservationAmount: Int, sequenceSubId: Option[String])
-      extends Command {
+  final case class ReserveSequence(
+      maxReservedValue: BigInt,
+      reservationAmount: Int,
+      sequenceSubId: Option[String],
+      replyTo: ActorRef[ReservationResponse],
+  ) extends Command {
     require(maxReservedValue > 0 && reservationAmount > 0)
   }
-  final case class ResetReserveSequence(firstValue: BigInt, reservationAmount: Int, sequenceSubId: Option[String])
-      extends Command {
+  final case class ResetReserveSequence(
+      firstValue: BigInt,
+      reservationAmount: Int,
+      sequenceSubId: Option[String],
+      replyTo: ActorRef[ReservationResponse],
+  ) extends Command {
     require(firstValue > 0 && reservationAmount > 0)
   }
 
-  sealed trait DomainEvent                                                 extends NoSerializationVerificationNeeded
-  private final case class SessionOpened(session: Session)                 extends DomainEvent
-  private final case class SessionPrepared(sessionContext: SessionContext) extends DomainEvent
+  sealed trait SessionResult                                               extends Command
+  private final case class SessionOpened(session: Session)                 extends SessionResult
+  private final case class SessionPrepared(sessionContext: SessionContext) extends SessionResult
+  private final case class SessionFailed(exception: Throwable)             extends SessionResult
+
+  sealed trait ReservationResponse       extends NoSerializationVerificationNeeded
+  sealed trait InternalReservationResult extends Command
   final case class InitialSequenceReserved(
       initialValue: BigInt,
       maxReservedValue: BigInt,
-  ) extends DomainEvent {
+  ) extends InternalReservationResult
+      with ReservationResponse {
     require(initialValue >= 0 && maxReservedValue > 0)
   }
-  final case class SequenceReserved(maxReservedValue: BigInt) extends DomainEvent {
+  final case class SequenceReserved(maxReservedValue: BigInt)
+      extends InternalReservationResult
+      with ReservationResponse {
     require(maxReservedValue > 0)
   }
-  final case class SequenceReset(maxReservedValue: BigInt) extends DomainEvent {
+  final case class SequenceReset(maxReservedValue: BigInt) extends InternalReservationResult with ReservationResponse {
     require(maxReservedValue > 0)
   }
-  final case object ReservationFailed extends RuntimeException with DomainEvent
+  private final case class InternalReservationFailed(exception: Throwable) extends InternalReservationResult
+
+  final case object ReservationFailed extends RuntimeException with ReservationResponse
 
   private final case class SessionContext(
       session: Session,
@@ -62,88 +119,113 @@ private[sequence] final class SequenceStore(
     nodeId: Int,
     incrementStep: BigInt,
     config: SequenceFactoryCassandraConfig,
-)(implicit tenant: Tenant)
-    extends Actor
-    with Stash
-    with AppActorLogging {
+    context: ActorContext[SequenceStore.Command],
+    stashBuffer: StashBuffer[SequenceStore.Command],
+    logger: AppLogger,
+)(implicit tenant: Tenant) {
   require(nodeId > 0)
 
   import SequenceStore._
-  import context.dispatcher
+  import context.executionContext
   import lerna.util.tenant.TenantComponentLogContext.logContext
 
   val statements = new CassandraStatements(config)
 
-  override def receive: Receive = notReady
-
-  override def preStart(): Unit = {
-    super.preStart()
-    self ! OpenSession
+  def createBehavior(): Behavior[Command] = {
+    context.self ! OpenSession
+    notReady
   }
 
-  // Actor の状態を意識しながら Session を扱いたいので、Session の乱用を防ぐため、
-  // Session を直接配置せずに Session を close するだけの関数を配置
-  @SuppressWarnings(Array("org.wartremover.warts.Var"))
-  private[this] var sessionCloser: Option[() => Unit] = None
-
-  override def postStop(): Unit = {
-    sessionCloser.foreach(_.apply())
-    super.postStop()
+  private def close(session: Session): PartialFunction[(ActorContext[Command], Signal), Behavior[Command]] = {
+    case (_, signal) if signal === PreRestart || signal === PostStop =>
+      session.close()
+      Behaviors.same
   }
 
-  private[this] def notReady: Receive = {
-    case OpenSession               => openSession() pipeTo self
-    case _: InitialReserveSequence => stash()
-    case _: ReserveSequence        => stash()
+  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity", "org.wartremover.warts.Recursion"))
+  private[this] def notReady: Behaviors.Receive[Command] = Behaviors.receiveMessage {
+    case OpenSession =>
+      context.pipeToSelf(openSession()) {
+        case Success(sessionOpened) => sessionOpened
+        case Failure(exception)     => SessionFailed(exception)
+      }
+      Behaviors.same
+    case message: InitialReserveSequence =>
+      stashBuffer.stash(message)
+      Behaviors.same
+    case message: ReserveSequence =>
+      stashBuffer.stash(message)
+      Behaviors.same
+    case message: ResetReserveSequence =>
+      stashBuffer.stash(message)
+      Behaviors.same
     case SessionOpened(session) =>
-      sessionCloser = Option(() => session.close())
-      prepareSession(session) pipeTo self
+      context.pipeToSelf(prepareSession(session)) {
+        case Success(sessionPrepared) => sessionPrepared
+        case Failure(exception)       => SessionFailed(exception)
+      }
+      notReady.receiveSignal(close(session))
     case SessionPrepared(sessionContext) =>
-      unstashAll()
       logger.info("Cassandra session was ready (sequenceId: {}, nodeId: {})", sequenceId, nodeId)
-      context.become(ready(sessionContext))
+      stashBuffer.unstashAll(ready(sessionContext))
+
+    case SessionFailed(throwable)     => throw throwable
+    case _: InternalReservationResult => Behaviors.unhandled
   }
 
-  private[this] def ready(implicit sessionContext: SessionContext): Receive = {
-    case InitialReserveSequence(firstValue, reservationAmount, sequenceSubId) =>
-      initialReserve(firstValue, reservationAmount, sequenceSubId) pipeTo self
-      context.become(reserving(replyTo = sender()))
-    case ReserveSequence(maxReservationValue, reservationAmount, sequenceSubId) =>
-      reserve(maxReservationValue, reservationAmount, sequenceSubId) pipeTo self
-      context.become(reserving(replyTo = sender()))
-    case ResetReserveSequence(firstValue, reservationAmount, sequenceSubId) =>
-      reset(firstValue, reservationAmount, sequenceSubId) pipeTo self
-      context.become(reserving(replyTo = sender()))
-  }
+  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity"))
+  private[this] def ready(implicit sessionContext: SessionContext): Behavior[Command] = Behaviors
+    .receiveMessage[Command] {
+      case InitialReserveSequence(firstValue, reservationAmount, sequenceSubId, replyTo) =>
+        context.pipeToSelf(initialReserve(firstValue, reservationAmount, sequenceSubId)) {
+          case Success(initialSequenceReserved) => initialSequenceReserved
+          case Failure(exception)               => InternalReservationFailed(exception)
+        }
+        reserving(replyTo = replyTo)
+      case ReserveSequence(maxReservationValue, reservationAmount, sequenceSubId, replyTo) =>
+        context.pipeToSelf(reserve(maxReservationValue, reservationAmount, sequenceSubId)) {
+          case Success(sequenceReserved) => sequenceReserved
+          case Failure(exception)        => InternalReservationFailed(exception)
+        }
+        reserving(replyTo = replyTo)
+      case ResetReserveSequence(firstValue, reservationAmount, sequenceSubId, replyTo) =>
+        context.pipeToSelf(reset(firstValue, reservationAmount, sequenceSubId)) {
+          case Success(sequenceReset) => sequenceReset
+          case Failure(exception)     => InternalReservationFailed(exception)
+        }
+        reserving(replyTo = replyTo)
+      case OpenSession                  => Behaviors.unhandled
+      case _: SessionResult             => Behaviors.unhandled
+      case _: InternalReservationResult => Behaviors.unhandled
+    }.receiveSignal(close(sessionContext.session))
 
-  private[this] def reserving(replyTo: ActorRef)(implicit sessionContext: SessionContext): Receive = {
-    case _: InitialReserveSequence =>
-      stash()
-    case _: ReserveSequence =>
-      stash()
-    case _: ResetReserveSequence =>
-      stash()
-    case event: InitialSequenceReserved =>
-      replyTo ! event
-      unstashAll()
-      context.become(ready)
-    case event: SequenceReserved =>
-      replyTo ! event
-      unstashAll()
-      context.become(ready)
-    case event: SequenceReset =>
-      replyTo ! event
-      unstashAll()
-      context.become(ready)
-    case Status.Failure(ex) =>
-      replyTo ! ReservationFailed
-      throw ex
-  }
-
-  override def unhandled(message: Any): Unit = message match {
-    case Status.Failure(ex) => throw ex
-    case other              => super.unhandled(other)
-  }
+  private[this] def reserving(replyTo: ActorRef[ReservationResponse])(implicit sessionContext: SessionContext) =
+    Behaviors
+      .receiveMessage[Command] {
+        case message: InitialReserveSequence =>
+          stashBuffer.stash(message)
+          Behaviors.same
+        case message: ReserveSequence =>
+          stashBuffer.stash(message)
+          Behaviors.same
+        case message: ResetReserveSequence =>
+          stashBuffer.stash(message)
+          Behaviors.same
+        case event: InitialSequenceReserved =>
+          replyTo ! event
+          stashBuffer.unstashAll(ready)
+        case event: SequenceReserved =>
+          replyTo ! event
+          stashBuffer.unstashAll(ready)
+        case event: SequenceReset =>
+          replyTo ! event
+          stashBuffer.unstashAll(ready)
+        case InternalReservationFailed(exception) =>
+          replyTo ! ReservationFailed
+          throw exception
+        case OpenSession      => Behaviors.unhandled
+        case _: SessionResult => Behaviors.unhandled
+      }.receiveSignal(close(sessionContext.session))
 
   private[this] def openSession(): Future[SessionOpened] = {
     val sessionFuture = config

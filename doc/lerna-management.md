@@ -72,3 +72,23 @@ counter.increment()
 val metricValueWithTenant: Future[Option[MetricsValue]] =
   metrics.getMetrics(MetricsKey("my-custom-metric-key-name", Option(exampleTenant)))
 ```
+
+### Supported metric types
+
+`Metrics` supports the following metrics.
+- Counters
+- Gauges
+- Histograms
+- Range Samplers
+
+We can see all metric types of *Kamon* on [here](https://kamon.io/docs/latest/core/metrics/).
+
+Although `Metrics` holds metric values as strings,
+the string can be converted to another *Scala* type.
+We can convert strings returned from `Metrics` as follows.
+
+- Counters (`Long`)
+- Gauges (`Double`)
+- Histograms (`Long`)  
+  `Metrics` returns an average of the Histogram's values.
+- Range Samplers (`Long`)
