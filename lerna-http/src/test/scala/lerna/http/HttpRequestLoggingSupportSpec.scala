@@ -142,7 +142,7 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
         .withUri(s"http://127.0.0.1:$port/")
 
       LoggingTestKit
-        .info("ResponseBody: HttpEntity.Strict(text/plain; charset=UTF-8,10 bytes total)") // FIXME: body が出ない
+        .info("ResponseBody: dummy-body")
         .expect {
           new HttpRequestLoggingSupportForTyped(system)
             .httpSingleRequestWithAroundLogWithTimeout(request, timeout = 1.second.dilated)

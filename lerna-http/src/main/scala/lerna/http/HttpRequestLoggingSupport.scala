@@ -68,9 +68,15 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
         ),
       ).andThen {
         case Success(res) =>
-          logger.info(
-            s"Response: ${req.uri.toString} : ${res.status.toString}, ${latencyAndScope(req, start)}, ResponseHeaders: ${res.getHeaders.toString}, ResponseBody: ${maskLog(res.entity.toString)}",
-          )
+          Unmarshal(res).to[String].onComplete { triedString =>
+            val responseBody = triedString.toEither.left.map { throwable =>
+              logger.warn(throwable, "Failed to get the response body")
+              res.entity.toString
+            }.merge
+            logger.info(
+              s"Response: ${req.uri.toString} : ${res.status.toString}, ${latencyAndScope(req, start)}, ResponseHeaders: ${res.getHeaders.toString}, ResponseBody: ${maskLog(responseBody)}",
+            )
+          }
         case Failure(exception) =>
           logger.warn(exception, s"Response: ${req.uri.toString} : failed, ${latencyAndScope(req, start)}")
       }
