@@ -66,7 +66,7 @@ class RequestLogDirectiveSpec extends LernaHttpBaseSpec with ScalatestRouteTest 
       val route   = logRequestResultDirective & complete("")
 
       LoggingTestKit
-        .info("RequestBody: HttpEntity.Strict(text/plain; charset=UTF-8,10 bytes total),") // FIXME: body が出ない
+        .info("RequestBody: dummy-body,")
         .expect {
           request ~> route
         }
@@ -77,7 +77,7 @@ class RequestLogDirectiveSpec extends LernaHttpBaseSpec with ScalatestRouteTest 
       val route   = logRequestResultDirective & complete("dummy-body")
 
       LoggingTestKit
-        .info("ResponseBody: HttpEntity.Strict(text/plain; charset=UTF-8,10 bytes total)") // FIXME: body が出ない
+        .info("ResponseBody: dummy-body")
         .expect {
           request ~> route
         }
