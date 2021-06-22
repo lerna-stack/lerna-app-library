@@ -3,6 +3,7 @@ package lerna.http
 import akka.actor.{ ActorSystem, ClassicActorSystemProvider }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.pattern.after
 import lerna.log.AppLogging
 import lerna.util.trace.RequestContext
@@ -47,9 +48,15 @@ trait HttpRequestLoggingSupport extends HttpRequestProxySupport { self: AppLoggi
     import requestContext.tenant
 
     val start = System.nanoTime()
-    logger.info(
-      s"Request: [${req.method.value}] ${req.uri.toString}, RequestHeaders: ${req.getHeaders.toString}, RequestBody: ${maskLog(req.entity.toString)}",
-    )
+    Unmarshal(req).to[String].onComplete { triedString =>
+      val requestBody = triedString.toEither.left.map { throwable =>
+        logger.warn(throwable, "Failed to get the request body")
+        req.entity.toString
+      }.merge
+      logger.info(
+        s"Request: [${req.method.value}] ${req.uri.toString}, RequestHeaders: ${req.getHeaders.toString}, RequestBody: ${maskLog(requestBody)}",
+      )
+    }
 
     Future
       .firstCompletedOf(
