@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v1.0.0...main
 
+### Fixed
+- `lerna-http`
+    - Fixed an issue where HTTP Body was not logged
+    - Fixed an issue where URL queries were not logged
+
 ### Added
 - `lerna-testkit`: Added testkit for TypedActor
 - `lerna-log`: Added Logger for TypedActor
