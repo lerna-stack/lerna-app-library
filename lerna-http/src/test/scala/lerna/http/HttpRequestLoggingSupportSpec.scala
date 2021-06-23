@@ -64,18 +64,18 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
             .withEntity(responseBody)
         }
       val binding = Await.result(bindingFuture, 3.seconds.dilated)
-      val port    = binding.localAddress.getPort.toString
-      port
+      val origin  = s"http://${binding.localAddress.getHostName}:${binding.localAddress.getPort.toString}"
+      origin
     }
 
     "URL を リクエストログに 出力する" in {
-      val port = startServer("127.0.0.3")
+      val origin = startServer("127.0.0.3")
       val request = HttpRequest()
         .withMethod(HttpMethods.GET)
-        .withUri(s"http://127.0.0.3:$port/dummy-path?key=value")
+        .withUri(s"$origin/dummy-path?key=value")
 
       LoggingTestKit
-        .info(s"Request: [GET] http://127.0.0.3:$port/dummy-path?key=value")
+        .info(s"Request: [GET] $origin/dummy-path?key=value")
         .expect {
           new HttpRequestLoggingSupportForTyped(system)
             .httpSingleRequestWithAroundLogWithTimeout(request, timeout = 1.second.dilated)
@@ -83,9 +83,9 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
     }
 
     "HTTP Header を リクエストログに 出力する" in {
-      val port = startServer()
+      val origin = startServer()
       val request = HttpRequest()
-        .withUri(s"http://127.0.0.1:$port/")
+        .withUri(s"$origin/")
         .addHeader(RawHeader("X-dummy-header", "dummy-value"))
 
       LoggingTestKit
@@ -97,9 +97,9 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
     }
 
     "HTTP Body を リクエストログに 出力する" in {
-      val port = startServer()
+      val origin = startServer()
       val request = HttpRequest()
-        .withUri(s"http://127.0.0.1:$port/")
+        .withUri(s"$origin/")
         .withEntity("dummy-body")
 
       LoggingTestKit
@@ -111,12 +111,12 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
     }
 
     "URL を レスポンスログに 出力する" in {
-      val port = startServer("127.0.0.5")
+      val origin = startServer("127.0.0.5")
       val request = HttpRequest()
-        .withUri(s"http://127.0.0.5:$port/dummy-path?key=value")
+        .withUri(s"$origin/dummy-path?key=value")
 
       LoggingTestKit
-        .info(s"Response: http://127.0.0.5:$port/dummy-path?key=value")
+        .info(s"Response: $origin/dummy-path?key=value")
         .expect {
           new HttpRequestLoggingSupportForTyped(system)
             .httpSingleRequestWithAroundLogWithTimeout(request, timeout = 1.second.dilated)
@@ -124,9 +124,9 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
     }
 
     "HTTP Header を レスポンスログに 出力する" in {
-      val port = startServer(responseHeader = Option(RawHeader("X-dummy-header", "dummy-value")))
+      val origin = startServer(responseHeader = Option(RawHeader("X-dummy-header", "dummy-value")))
       val request = HttpRequest()
-        .withUri(s"http://127.0.0.1:$port/")
+        .withUri(s"$origin/")
 
       LoggingTestKit
         .info("ResponseHeaders: [X-dummy-header: dummy-value,")
@@ -137,9 +137,9 @@ class HttpRequestLoggingSupportSpec extends ScalaTestWithTypedActorTestKit() wit
     }
 
     "HTTP Body を レスポンスログに 出力する" in {
-      val port = startServer(responseBody = "dummy-body")
+      val origin = startServer(responseBody = "dummy-body")
       val request = HttpRequest()
-        .withUri(s"http://127.0.0.1:$port/")
+        .withUri(s"$origin/")
 
       LoggingTestKit
         .info("ResponseBody: dummy-body")
