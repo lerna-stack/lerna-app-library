@@ -17,10 +17,10 @@ class RequestLogDirectiveSpec extends LernaHttpBaseSpec with ScalatestRouteTest 
     val route = logRequestDirective & complete("")
 
     "URL を リクエストログに 出力する" in {
-      val request = Get("/dummy-path/123")
+      val request = Get("http://example.com:8080/dummy-path/123?key1=value1&key2=value2")
 
       LoggingTestKit
-        .info("Request: [GET] /dummy-path/123,")
+        .info("Request: [GET] /dummy-path/123?key1=value1&key2=value2,")
         .expect {
           request ~> route
         }
@@ -39,11 +39,11 @@ class RequestLogDirectiveSpec extends LernaHttpBaseSpec with ScalatestRouteTest 
 
   "RequestLogDirective.logRequestResultDirective" should {
     "URL を レスポンスログに 出力する" in {
-      val request = Get("/dummy-path/123")
+      val request = Get("http://example.com:8080/dummy-path/123?key1=value1&key2=value2")
       val route   = logRequestResultDirective & complete("")
 
       LoggingTestKit
-        .info("Response: /dummy-path/123 : 200 OK,")
+        .info("Response: /dummy-path/123?key1=value1&key2=value2 : 200 OK,")
         .expect {
           request ~> route
         }
