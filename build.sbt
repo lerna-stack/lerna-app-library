@@ -375,6 +375,7 @@ lazy val lernaHTTP = lernaModule("lerna-http")
       Dependencies.AkkaHTTP.sprayJson,
       Dependencies.Akka.actorTestKitTyped % Test,
       Dependencies.AkkaHTTP.httpTestKit   % Test,
+      Dependencies.Logback.classic        % Test,
     ),
   )
 
