@@ -297,8 +297,9 @@ lazy val lernaLog = lernaModule("lerna-log")
       Dependencies.ScalaLang.scalaCollectionCompat,
       Dependencies.SLF4J.api,
       Dependencies.Akka.slf4j,
-      Dependencies.Akka.actorTyped % Optional,
-      Dependencies.Logback.classic % Optional,
+      Dependencies.Akka.actorTyped        % Optional,
+      Dependencies.Logback.classic        % Optional,
+      Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
 
