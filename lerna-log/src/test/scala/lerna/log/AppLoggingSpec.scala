@@ -1,6 +1,13 @@
 package lerna.log
 
-final class AppLoggingSpec extends LernaLogBaseSpec {
+import akka.actor.testkit.typed.scaladsl.LoggingTestKit
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.{ Actor, Props }
+import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
+import lerna.tests.LernaBaseSpec
+
+final class AppLoggingSpec extends ScalaTestWithTypedActorTestKit() with LernaBaseSpec {
 
   "AppLogging.info should throw no exceptions when it takes standard types" in {
     import SystemComponentLogContext.logContext
@@ -31,4 +38,66 @@ final class AppLoggingSpec extends LernaLogBaseSpec {
 
   }
 
+  "AppLogging" should {
+    object LogTest extends AppLogging
+
+    "LogContext の MDC をセットする" in {
+      implicit val logContext: LogContext = new LogContext {
+        override protected[log] def mdc: Map[String, String] = Map("dummy_mdc_key" -> "dummy_mdc_value")
+      }
+      LoggingTestKit
+        .custom { event =>
+          event.mdc.get("dummy_mdc_key") === Option("dummy_mdc_value") &&
+          event.mdc.get("actorPath") === None
+        }
+        .expect {
+          LogTest.logger.info("dummy_log")
+        }
+    }
+  }
+
+  "AppActorLogging" should {
+    "LogContext の MDC & actorPath をセットする" in {
+      implicit val logContext: LogContext = new LogContext {
+        override protected[log] def mdc: Map[String, String] = Map("dummy_mdc_key" -> "dummy_mdc_value")
+      }
+      LoggingTestKit
+        .custom { event =>
+          event.mdc.get("dummy_mdc_key") === Option("dummy_mdc_value") &&
+          event.mdc.contains("actorPath")
+        }
+        .expect {
+          spawn(Behaviors.setup[Unit] { context => // typed ActorSystem から classic Actor を直接作れないため typed Actor で wrap
+            import akka.actor.typed.scaladsl.adapter._
+            context.actorOf(Props(new Actor with AppActorLogging {
+              logger.info("dummy_log")
+              override def receive: Receive = Actor.emptyBehavior
+            }))
+            Behaviors.empty
+          })
+        }
+    }
+  }
+
+  "AppTypedActorLogging" should {
+    "LogContext の MDC & actorPath をセットする" in {
+      implicit val logContext: LogContext = new LogContext {
+        override protected[log] def mdc: Map[String, String] = Map("dummy_mdc_key" -> "dummy_mdc_value")
+      }
+      object LogTestActor extends AppTypedActorLogging {
+        def apply(): Behavior[Unit] = withLogger { logger =>
+          logger.info("dummy_log")
+          Behaviors.empty
+        }
+      }
+      LoggingTestKit
+        .custom { event =>
+          event.mdc.get("dummy_mdc_key") === Option("dummy_mdc_value") &&
+          event.mdc.contains("actorPath")
+        }
+        .expect {
+          spawn(LogTestActor())
+        }
+    }
+  }
 }
