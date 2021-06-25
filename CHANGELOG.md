@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lerna-http`
     - Fixed an issue where HTTP Body was not logged
     - Fixed an issue where URL queries were not logged
+- `lerna-log`
+    - Fixed an issue where existing mdc was ignored when logging
+    - Fixed an issue where existing mdc was deleted after log output
 
 ### Added
 - `lerna-testkit`: Added testkit for TypedActor
