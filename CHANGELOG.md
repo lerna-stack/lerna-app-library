@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lerna-testkit`: Added testkit for TypedActor
 - `lerna-log`: Added Logger for TypedActor
 - `lerna-util-akka`: Added `AtLeastOnceDelivery` API for TypedActor 
+- Java11 support
 
 ### Changed
 - `lerna-management`
