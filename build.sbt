@@ -279,7 +279,7 @@ lazy val lernaManagement = lernaModule("lerna-management")
     libraryDependencies ++= Seq(
       Dependencies.Akka.actorTyped,
       Dependencies.Kamon.core,
-      Dependencies.Kamon.systemMetrics,
+      Dependencies.Kamon.systemMetrics    % Test,
       Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
