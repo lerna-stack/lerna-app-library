@@ -70,14 +70,6 @@ object MetricsImplSpec {
                                |      }
                                |    }
                                |
-                               |    /system-metrics/host/network/bytes {
-                               |      name = "host.network.data.read"
-                               |      tags {
-                               |        component = "host"
-                               |        interface = "eth0"
-                               |      }
-                               |    }
-                               |
                                |    /not-exits-value {
                                |      name = "dummy"
                                |      null-value = "0"
@@ -255,16 +247,6 @@ class MetricsImplSpec extends LernaManagementActorBaseSpec(ActorSystem("MetricsI
         timeout,
       ) { metrics =>
         expect(metrics.value.toLong > 0)
-      }
-    }
-
-    "host_network_bytes" in {
-      val key = MetricsKey("system-metrics/host/network/bytes", None)
-      whenReady(
-        retry(() => metricsImpl.getMetrics(key).map(_.get), attempts, delay),
-        timeout,
-      ) { metrics =>
-        expect(metrics.value.nonEmpty)
       }
     }
 
