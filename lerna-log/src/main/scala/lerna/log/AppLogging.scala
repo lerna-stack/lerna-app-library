@@ -166,12 +166,19 @@ class CommonLogger(log: Logger) extends AppLogger {
   }
 
   private[log] def decorate(mdc: Map[String, String])(logOut: => Unit): Unit = {
+    val maybeCurrentContextMap = Option(MDC.getCopyOfContextMap)
     try {
       import scala.jdk.CollectionConverters._
-      MDC.setContextMap(mdc.asJava)
+      maybeCurrentContextMap match {
+        case Some(map) => MDC.setContextMap((map.asScala.toMap ++ mdc).asJava)
+        case None      => MDC.setContextMap(mdc.asJava)
+      }
       logOut
     } finally {
-      MDC.clear()
+      maybeCurrentContextMap match {
+        case Some(map) => MDC.setContextMap(map)
+        case None      => MDC.clear()
+      }
     }
   }
 }
@@ -288,13 +295,14 @@ class CommonActorLogger(adapter: DiagnosticLoggingAdapter, system: ActorSystem, 
   }
 
   private[this] def decorate(logContext: LogContext)(logOut: => Unit): Unit = {
+    val currentMdc = adapter.mdc
     try {
       adapter.mdc(
-        logContext.mdc + ("actorPath" -> logSource.path.toString),
+        currentMdc ++ logContext.mdc + ("actorPath" -> logSource.path.toString),
       )
       logOut
     } finally {
-      adapter.clearMDC()
+      adapter.mdc(currentMdc)
     }
   }
 

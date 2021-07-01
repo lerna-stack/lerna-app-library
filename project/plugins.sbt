@@ -13,7 +13,7 @@ addSbtPlugin("com.thesamet"                    % "sbt-protoc"     % "1.0.2")
 libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.3"
 
 // Documentation
-addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "2.0.0")
+addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "3.0.0")
 addSbtPlugin("com.github.tkawachi"               % "sbt-doctest"      % "0.9.7")
 addSbtPlugin("com.eed3si9n"                      % "sbt-unidoc"       % "0.4.3")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"         % "2.2.12")

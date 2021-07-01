@@ -279,7 +279,7 @@ lazy val lernaManagement = lernaModule("lerna-management")
     libraryDependencies ++= Seq(
       Dependencies.Akka.actorTyped,
       Dependencies.Kamon.core,
-      Dependencies.Kamon.systemMetrics,
+      Dependencies.Kamon.systemMetrics    % Test,
       Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
@@ -297,8 +297,9 @@ lazy val lernaLog = lernaModule("lerna-log")
       Dependencies.ScalaLang.scalaCollectionCompat,
       Dependencies.SLF4J.api,
       Dependencies.Akka.slf4j,
-      Dependencies.Akka.actorTyped % Optional,
-      Dependencies.Logback.classic % Optional,
+      Dependencies.Akka.actorTyped        % Optional,
+      Dependencies.Logback.classic        % Optional,
+      Dependencies.Akka.actorTestKitTyped % Test,
     ),
   )
 
@@ -375,6 +376,7 @@ lazy val lernaHTTP = lernaModule("lerna-http")
       Dependencies.AkkaHTTP.sprayJson,
       Dependencies.Akka.actorTestKitTyped % Test,
       Dependencies.AkkaHTTP.httpTestKit   % Test,
+      Dependencies.Logback.classic        % Test,
     ),
   )
 

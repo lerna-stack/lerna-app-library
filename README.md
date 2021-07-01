@@ -22,6 +22,8 @@ A library that is useful for building applications that run on Lerna Stack.
     - *Lerna Validation* library provides custom validators for [Accord]
 - [**lerna-wart-core**](doc/lerna-wart-core.md)
     - *Lerna Wart Core* library provides custom warts for [WartRemover]
+    
+The above modules are tested with OpenJDK8 and OpenJDK11.
 
 [Accord]: http://wix.github.io/accord/
 [Akka]: https://doc.akka.io/docs/akka/current/
