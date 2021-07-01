@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `lerna-management`
   - Update to `Kamon 2.1.8` from `Kamon 1.1.6`
+  - Remove the `kamon-system-metrics` dependency as it is not required for everyone. If you are using it, you need to add a dependency.
   - Improve documentation
   - Provide [migration guide](doc/migration-guide.md)
 - Update to `ScalaTest 3.1.4` from `ScalaTest 3.0.9`
