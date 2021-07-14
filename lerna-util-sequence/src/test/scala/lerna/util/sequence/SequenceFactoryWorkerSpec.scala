@@ -103,6 +103,55 @@ class SequenceFactoryWorkerSpec
 
       testKit.stop(worker)
     }
+
+    "初期化時に上限を超えた場合はリセットする" in {
+      val storeProbe        = createTestProbe[SequenceStore.Command]()
+      val maxSequenceValue  = 999
+      val firstValue        = 3
+      val incrementStep     = 10
+      val reservationAmount = 1
+      val worker = spawn(
+        SequenceFactoryWorker
+          .apply(
+            maxSequenceValue = maxSequenceValue,
+            firstValue = firstValue,
+            incrementStep = incrementStep,
+            reservationAmount = reservationAmount,
+            storeProbe.ref,
+            idleTimeout = 10.seconds,
+            sequenceSubId,
+          ),
+      )
+
+      // maxSequenceValue = 999 より大きい値を返す。 ※ この値が実際に発生するとは限らない
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.InitialReserveSequence =>
+          result.replyTo ! SequenceStore.InitialSequenceReserved(
+            initialValue = maxSequenceValue + 1,
+            maxReservedValue = maxSequenceValue + 1 + (incrementStep * (reservationAmount - 1)),
+          )
+      }
+
+      // store に保存されていた initialValue が maxSequenceValue より大きい場合、リセットされる
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.ResetReserveSequence =>
+          expect(result.firstValue === BigInt(firstValue))
+          expect(result.reservationAmount === reservationAmount)
+          expect(result.sequenceSubId === sequenceSubId)
+
+          val maxReservedValue = firstValue
+          result.replyTo ! SequenceStore.SequenceReset(
+            maxReservedValue = maxReservedValue + (incrementStep * reservationAmount),
+          )
+      }
+
+      // 採番できる
+      val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+      replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue, sequenceSubId))
+
+      testKit.stop(worker)
+    }
   }
 
 }
