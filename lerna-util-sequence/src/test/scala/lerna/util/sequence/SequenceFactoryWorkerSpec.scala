@@ -161,6 +161,9 @@ class SequenceFactoryWorkerSpec
           )
       }
 
+      // ※ 現在の実装だと 23 は skip されて歯抜けになる
+      expect(replyToProbe.receiveMessage().value === BigInt(33)) // firstValue + incrementStep * 3
+
       testKit.stop(worker)
     }
 
