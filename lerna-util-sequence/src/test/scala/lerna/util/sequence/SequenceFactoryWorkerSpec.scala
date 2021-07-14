@@ -152,6 +152,49 @@ class SequenceFactoryWorkerSpec
 
       testKit.stop(worker)
     }
+
+    "採番要求で次番号が上限を超えた場合はリセットする" in {
+      val storeProbe        = createTestProbe[SequenceStore.Command]()
+      val firstValue        = 3
+      val incrementStep     = 10
+      val maxSequenceValue  = 12 // < 13 = 3 + 10 = firstValue + incrementStep
+      val reservationAmount = 1
+      val worker = spawn(
+        SequenceFactoryWorker
+          .apply(
+            maxSequenceValue = maxSequenceValue,
+            firstValue = firstValue,
+            incrementStep = incrementStep,
+            reservationAmount = reservationAmount,
+            storeProbe.ref,
+            idleTimeout = 10.seconds,
+            sequenceSubId,
+          ),
+      )
+
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.InitialReserveSequence =>
+          result.replyTo ! SequenceStore.InitialSequenceReserved(
+            initialValue = firstValue,
+            maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1)),
+          )
+      }
+
+      // 採番できる
+      val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+      replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue, sequenceSubId))
+
+      // newNextValue > maxSequenceValue の場合、リセットされる
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.ResetReserveSequence =>
+          expect(result.firstValue === BigInt(firstValue))
+          expect(result.reservationAmount === reservationAmount)
+          expect(result.sequenceSubId === sequenceSubId)
+      }
+
+      testKit.stop(worker)
+    }
   }
 
 }
