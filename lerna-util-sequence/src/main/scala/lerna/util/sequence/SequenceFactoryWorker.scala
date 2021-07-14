@@ -115,7 +115,7 @@ private[sequence] final class SequenceFactoryWorker(
         if (msg.sequenceSubId === sequenceSubId) {
           import sequenceContext._
 
-          if (nextValue <= maxSequenceValue) {
+          if (nextValue <= maxSequenceValue && nextValue <= maxReservedValue) {
             msg.replyTo ! SequenceGenerated(nextValue, sequenceSubId)
             logger.debug("SequenceGenerated when ready: {}", nextValue)
           } else {
