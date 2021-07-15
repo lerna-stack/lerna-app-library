@@ -4,6 +4,9 @@ import akka.actor.ActorSystem
 import akka.testkit.TestActors
 import lerna.testkit.LernaTestKitBaseSpec
 
+import scala.annotation.nowarn
+
+@nowarn("msg=Use ScalaTestWithTypedActorTestKit")
 final class ScalaTestWithClassicActorTestKitSpec
     extends ScalaTestWithClassicActorTestKit(ActorSystem("scala-test-with-classic-actor-test-kit-spec"))
     with LernaTestKitBaseSpec {
