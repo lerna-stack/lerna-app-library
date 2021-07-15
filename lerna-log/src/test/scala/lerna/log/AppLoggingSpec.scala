@@ -9,7 +9,10 @@ import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import org.slf4j.MDC
 
+import scala.annotation.nowarn
+
 @SuppressWarnings(Array("org.wartremover.warts.Null"))
+@nowarn("msg=trait AppActorLogging in package log is deprecated")
 final class AppLoggingSpec extends ScalaTestWithTypedActorTestKit() with LernaBaseSpec {
 
   "AppLogging.info should throw no exceptions when it takes standard types" in {

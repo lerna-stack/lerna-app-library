@@ -12,6 +12,7 @@ import lerna.tests.LernaBaseSpec
 import lerna.util.akka.AtLeastOnceDelivery.AtLeastOnceDeliveryRequest
 import lerna.util.trace.TraceId
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 
 object AtLeastOnceDeliverySpec {
@@ -39,6 +40,7 @@ object AtLeastOnceDeliverySpec {
   final case class ResponseMessage(message: String)
 }
 
+@nowarn("msg=Use typed Actor")
 class AtLeastOnceDeliverySpec
     extends LernaAkkaActorBaseSpec(ActorSystem("AtLeastOnceDeliverySpec", AtLeastOnceDeliverySpec.config)) {
 
