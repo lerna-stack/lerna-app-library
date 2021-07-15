@@ -45,6 +45,7 @@ object AtLeastOnceDelivery {
     * @param timeout The entire timeout
     * @return The [[scala.concurrent.Future]] holding the reply message or an exception
     */
+  @deprecated(message = "Use typed Actor", since = "2.0.0")
   def askTo(
       destination: ActorRef,
       message: Any,
@@ -73,6 +74,7 @@ object AtLeastOnceDelivery {
     * @param system The [[akka.actor.ActorSystem]] to be used
     * @param sender The sender actor. If you omit this parameter [[akka.actor.Actor.noSender]] is used.
     */
+  @deprecated(message = "Use typed Actor", since = "2.0.0")
   def tellTo(
       destination: ActorRef,
       message: Any,

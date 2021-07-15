@@ -6,4 +6,5 @@ import akka.actor.ActorRef
   *
   * @param actorRef The reply destination actor
   */
+@deprecated(message = "Use typed Actor", since = "2.0.0")
 final case class ReplyTo(actorRef: ActorRef) extends AnyVal

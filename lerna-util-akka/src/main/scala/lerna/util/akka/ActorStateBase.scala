@@ -10,6 +10,7 @@ import akka.actor.Actor.Receive
   * @tparam Event The type of Event that is handled by the actor
   * @tparam State The type of State of the actor
   */
+@deprecated(message = "Use typed Actor", since = "2.0.0")
 trait ActorStateBase[Event, State <: ActorStateBase[Event, State]] {
 
   /** The type of event handler of the actor
