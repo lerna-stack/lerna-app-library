@@ -256,6 +256,59 @@ class SequenceFactoryWorkerSpec
 
       testKit.stop(worker)
     }
+
+    "リセットに失敗した場合は再度リセットが要求される" in {
+      val storeProbe        = createTestProbe[SequenceStore.Command]()
+      val firstValue        = 3
+      val incrementStep     = 10
+      val maxSequenceValue  = 12 // < 13 = 3 + 10 = firstValue + incrementStep
+      val reservationAmount = 1
+      val worker = spawn(
+        SequenceFactoryWorker
+          .apply(
+            maxSequenceValue = maxSequenceValue,
+            firstValue = firstValue,
+            incrementStep = incrementStep,
+            reservationAmount = reservationAmount,
+            storeProbe.ref,
+            idleTimeout = 10.seconds,
+            sequenceSubId,
+          ),
+      )
+
+      // 初期化
+      storeProbe
+        .expectMessageType[SequenceStore.InitialReserveSequence]
+        .replyTo
+        .tell {
+          SequenceStore.InitialSequenceReserved(
+            initialValue = firstValue,
+            maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1)),
+          )
+        }
+
+      // 初回は採番できる
+      {
+        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+        replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue, sequenceSubId))
+      }
+
+      // newNextValue > maxSequenceValue の場合、リセットされる
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.ResetReserveSequence =>
+          result.replyTo ! SequenceStore.ReservationFailed
+      }
+
+      {
+        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+      }
+
+      storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
+
+      testKit.stop(worker)
+    }
   }
 
 }
