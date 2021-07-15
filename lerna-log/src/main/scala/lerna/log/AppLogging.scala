@@ -17,6 +17,7 @@ trait AppLogging {
 
 /** A trait that provides a common logger especially for Akka Actor
   */
+@deprecated(message = "Use typed Actor and AppTypedActorLogging instead", since = "2.0.0")
 trait AppActorLogging extends DiagnosticActorLogging {
   lazy val logger: AppLogger = new CommonActorLogger(log, context.system, getClass, self)
 }

@@ -12,6 +12,7 @@ import org.scalatest.concurrent.{ Eventually, ScalaFutures }
   * This class is inspired by
   * [[https://doc.akka.io/api/akka/2.6/akka/actor/testkit/typed/scaladsl/ScalaTestWithActorTestKit.html ScalaTestWithActorTestKit]]
   */
+@deprecated(message = "Use ScalaTestWithTypedActorTestKit", since = "2.0.0")
 abstract class ScalaTestWithClassicActorTestKit(system: ActorSystem)
     extends TestKit(system)
     with TestSuite
