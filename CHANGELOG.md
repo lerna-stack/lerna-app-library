@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improve documentation
   - Provide [migration guide](doc/migration-guide.md)
 - Update to `ScalaTest 3.1.4` from `ScalaTest 3.0.9`
+- Deprecate API for classic Actor. The API for classic Actor will be removed in the next major version upgrade.
 
 ## [v1.0.0] - 2020-12-22
 [v1.0.0]: https://github.com/lerna-stack/lerna-app-library/tree/v1.0.0
