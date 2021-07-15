@@ -19,6 +19,7 @@ import lerna.util.time.JavaDurationConverters._
 import lerna.util.trace.RequestContext
 
 import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.nowarn
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
@@ -191,6 +192,7 @@ object AtLeastOnceDelivery {
   * 1 リクエスト -> 1 Actor<br>
   * ※ 再度Actorが作成されるケースは考えていない<br>
   */
+@nowarn("msg=Use typed Actor")
 private[akka] final class AtLeastOnceDelivery(destination: ActorRef)(implicit requestContext: RequestContext)
     extends Actor
     with AppActorLogging {
