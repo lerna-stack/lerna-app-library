@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v2.0.0...main
 
+### Changed
+- Update `cassandra-driver-core` to `3.11.0` from `3.7.1`
 
 
 ## [v2.0.0] - 2021-07-16

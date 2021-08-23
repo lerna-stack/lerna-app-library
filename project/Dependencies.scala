@@ -8,7 +8,7 @@ object Dependencies {
     val airframe              = "20.9.0"
     val akka                  = "2.6.8"
     val akkaHTTP              = "10.2.4"
-    val cassandraDriverCore   = "3.7.1"
+    val cassandraDriverCore   = "3.11.0"
     val kamonCore             = "2.1.18"
     val kamonSystemMetrics    = "2.1.18"
     val logbackClassic        = "1.2.3"
