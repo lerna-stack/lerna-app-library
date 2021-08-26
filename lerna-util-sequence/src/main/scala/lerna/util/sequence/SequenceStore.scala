@@ -2,17 +2,18 @@ package lerna.util.sequence
 
 import akka.Done
 import akka.actor.NoSerializationVerificationNeeded
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
 import akka.actor.typed._
-import com.datastax.driver.core._
-import com.datastax.driver.core.exceptions._
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.cql.{ PreparedStatement, Row, Statement }
+import com.datastax.oss.driver.api.core.servererrors.{ ReadTimeoutException, WriteTimeoutException }
+import com.datastax.oss.driver.api.core.session.Session
 import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
-import lerna.util.sequence.FutureConverters.ListenableFutureConverter
 import lerna.util.tenant.Tenant
 
+import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 import scala.util.{ Failure, Success }
 
 private[sequence] object SequenceStore extends AppTypedActorLogging {
@@ -39,17 +40,12 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
     }
 
     // SupervisorStrategy
-    // see: https://docs.datastax.com/en/developer/java-driver/3.6/manual/retries/#retry-policy
-    behavior = Behaviors.supervise(behavior).onFailure[NoHostAvailableException](SupervisorStrategy.restart)
-    behavior = Behaviors.supervise(behavior).onFailure[UnsupportedFeatureException](SupervisorStrategy.restart)
+    // see also https://docs.datastax.com/en/developer/java-driver/4.13/manual/core/retries/#retries
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
-    // コーディネーターに何らかの問題が起きている可能性がある。再接続して回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[OperationTimedOutException](SupervisorStrategy.restart)
-    // コネクションに問題がある。再接続して回復することを期待する
-    behavior = Behaviors.supervise(behavior).onFailure[ConnectionException](SupervisorStrategy.restart)
+    // その他の例外は restart して、回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
     behavior
   }
@@ -82,7 +78,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
   }
 
   sealed trait SessionResult                                               extends Command
-  private final case class SessionOpened(session: Session)                 extends SessionResult
+  private final case class SessionOpened(session: CqlSession)              extends SessionResult
   private final case class SessionPrepared(sessionContext: SessionContext) extends SessionResult
   private final case class SessionFailed(exception: Throwable)             extends SessionResult
 
@@ -108,7 +104,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
   final case object ReservationFailed extends RuntimeException with ReservationResponse
 
   private final case class SessionContext(
-      session: Session,
+      session: CqlSession,
       selectSequenceReservationStatement: PreparedStatement,
       insertSequenceReservationStatement: PreparedStatement,
   )
@@ -228,37 +224,39 @@ private[sequence] final class SequenceStore(
       }.receiveSignal(close(sessionContext.session))
 
   private[this] def openSession(): Future[SessionOpened] = {
-    val sessionFuture = config
-      .buildCassandraClusterConfig()
-      .connectAsync().asScala
-
-    sessionFuture.map(SessionOpened.apply)
+    CqlSessionProvider
+      .connect(context.system, config)
+      .map(SessionOpened.apply)
   }
 
-  private[this] def executeWrite(statement: Statement)(implicit sessionContext: SessionContext): Future[Done] = {
+  private[this] def executeWrite[T <: Statement[T]](
+      statement: Statement[T],
+  )(implicit sessionContext: SessionContext): Future[Done] = {
     import sessionContext._
-    statement.setConsistencyLevel(config.cassandraWriteConsistency)
-    session.executeAsync(statement).asScala.map(_ => Done)
+    session.executeAsync(statement.setExecutionProfileName(config.writeProfileName)).toScala.map(_ => Done)
   }
 
-  private[this] def executeRead(statement: Statement)(implicit sessionContext: SessionContext): Future[Option[Row]] = {
+  private[this] def executeRead[T <: Statement[T]](
+      statement: Statement[T],
+  )(implicit sessionContext: SessionContext): Future[Option[Row]] = {
     import sessionContext._
-    statement.setConsistencyLevel(config.cassandraReadConsistency)
-    session.executeAsync(statement).asScala.map(_.all().asScala.headOption)
+    session.executeAsync(statement.setExecutionProfileName(config.readProfileName)).toScala.map { asyncResult =>
+      Option(asyncResult.one())
+    }
   }
 
-  private[this] def prepareSession(session: Session): Future[SessionPrepared] = {
+  private[this] def prepareSession(session: CqlSession): Future[SessionPrepared] = {
     for {
-      _                                  <- session.executeAsync(statements.createKeyspace).asScala
-      _                                  <- session.executeAsync(statements.useKeyspace).asScala
-      _                                  <- session.executeAsync(statements.createTable).asScala
-      selectSequenceReservationStatement <- session.prepareAsync(statements.selectSequenceReservation).asScala
-      insertSequenceReservationStatement <- session.prepareAsync(statements.insertSequenceReservation).asScala
+      _                                  <- session.executeAsync(statements.createKeyspace).toScala
+      _                                  <- session.executeAsync(statements.useKeyspace).toScala
+      _                                  <- session.executeAsync(statements.createTable).toScala
+      selectSequenceReservationStatement <- session.prepareAsync(statements.selectSequenceReservation).toScala
+      insertSequenceReservationStatement <- session.prepareAsync(statements.insertSequenceReservation).toScala
     } yield SessionPrepared(
       SessionContext(
         session,
-        selectSequenceReservationStatement.setRetryPolicy(config.cassandraReadRetryPolicy),
-        insertSequenceReservationStatement.setRetryPolicy(config.cassandraWriteRetryPolicy),
+        selectSequenceReservationStatement,
+        insertSequenceReservationStatement,
       ),
     )
   }
@@ -282,9 +280,13 @@ private[sequence] final class SequenceStore(
     import sessionContext._
     for {
       maybeRow <- executeRead(
-        selectSequenceReservationStatement.bind(sequenceId, normalizeSubId(sequenceSubId), Integer.valueOf(nodeId)),
+        selectSequenceReservationStatement.bind(
+          sequenceId,
+          normalizeSubId(sequenceSubId),
+          Integer.valueOf(nodeId),
+        ),
       )
-      maybePrevMaxReservedValue = maybeRow.map(v => BigInt(v.getVarint("max_reserved_value")))
+      maybePrevMaxReservedValue = maybeRow.map(v => BigInt(v.getBigInteger("max_reserved_value")))
       initialValue              = maybePrevMaxReservedValue.map(_ + incrementStep).getOrElse(firstValue)
       reserved <- writeReservation(
         newMaxReservedValue = initialValue + (incrementStep * (reservationAmount - 1)),

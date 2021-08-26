@@ -353,9 +353,10 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
   .settings(wartremoverSettings, lernaCoverageSettings)
   .settings(
     libraryDependencies ++= Seq(
-      Dependencies.DataStax.cassandraDriverCore,
+      Dependencies.DataStax.javaDriverCore,
       Dependencies.Akka.actorTyped,
-      Dependencies.Akka.actorTestKitTyped % Test,
+      Dependencies.Akka.actorTestKitTyped     % Test,
+      Dependencies.ScalaLang.scalaJava8Compat % Test,
     ),
   )
 

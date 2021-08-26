@@ -1,13 +1,15 @@
 package lerna.util.sequence
 
-import com.datastax.driver.core._
-import com.datastax.driver.core.policies._
+import akka.actor.ClassicActorSystemProvider
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader
+import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader
 import com.typesafe.config.Config
 import lerna.util.tenant.Tenant
 import lerna.util.time.JavaDurationConverters._
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 private[sequence] final class SequenceFactoryConfig(root: Config) {
 
@@ -36,20 +38,15 @@ private[sequence] final class SequenceFactoryConfig(root: Config) {
   def cassandraConfig(implicit tenant: Tenant) = new SequenceFactoryCassandraConfig(config)
 }
 
-class SequenceFactoryCassandraConfig(baseConfig: Config)(implicit tenant: Tenant) {
+private[sequence] class SequenceFactoryCassandraConfig(baseConfig: Config)(implicit tenant: Tenant) {
   private[this] val cassandraConfig = baseConfig.getConfig(s"cassandra.tenants.${tenant.id}")
 
-  val cassandraContactPoints: Seq[String] = cassandraConfig.getStringList("contact-points").asScala.toSeq
+  val driverConfigPath: String = cassandraConfig.getString("datastax-java-driver-config")
+  val readProfileName: String  = cassandraConfig.getString("read-profile")
+  val writeProfileName: String = cassandraConfig.getString("write-profile")
 
   val cassandraKeyspace: String = cassandraConfig.getString("keyspace")
-
-  val cassandraTable: String = cassandraConfig.getString("table")
-
-  val cassandraWriteConsistency: ConsistencyLevel =
-    ConsistencyLevel.valueOf(cassandraConfig.getString("write-consistency"))
-
-  val cassandraReadConsistency: ConsistencyLevel =
-    ConsistencyLevel.valueOf(cassandraConfig.getString("read-consistency"))
+  val cassandraTable: String    = cassandraConfig.getString("table")
 
   def cassandraReplication: String = {
     s"""
@@ -74,65 +71,30 @@ class SequenceFactoryCassandraConfig(baseConfig: Config)(implicit tenant: Tenant
         }
       }.mkString(",")
 
-  val cassandraUsername: String = cassandraConfig.getString("authentication.username")
-
-  val cassandraPassword: String = cassandraConfig.getString("authentication.password")
-
-  private[this] def cassandraSocketOptions: SocketOptions = {
-    val connectionTimeout =
-      cassandraConfig.getDuration("socket.connection-timeout").asScala
-    val readTimeout =
-      cassandraConfig.getDuration("socket.read-timeout").asScala
-
-    new SocketOptions()
-      .setConnectTimeoutMillis(connectionTimeout.toMillis.toInt)
-      .setReadTimeoutMillis(readTimeout.toMillis.toInt)
-  }
-
-  private[this] def cassandraLoadBalancingPolicy: Option[LoadBalancingPolicy] = {
-    val localDatacenter = cassandraConfig.getString("local-datacenter")
-    if (localDatacenter.isEmpty) None
-    else
-      Option {
-        new TokenAwarePolicy(
-          DCAwareRoundRobinPolicy
-            .builder()
-            .withLocalDc(localDatacenter)
-            .build(),
-        )
-      }
-  }
-
-  def cassandraReadRetryPolicy: RetryPolicy = {
-    new LoggingRetryPolicy(new FixedRetryPolicy(cassandraConfig.getInt("read-retries")))
-  }
-
-  def cassandraWriteRetryPolicy: RetryPolicy = {
-    new LoggingRetryPolicy(new FixedRetryPolicy(cassandraConfig.getInt("write-retries")))
-  }
-
-  def buildCassandraClusterConfig(): Cluster = {
-
-    val builder =
-      Cluster
-        .builder()
-        .withSocketOptions(cassandraSocketOptions)
-        // DataStax 4.x が依存している io.dropwizard.metrics:metrics-core:4.0.5 では JMXが別モジュールになっているため
-        // JMXを無効にする必要がある。有効にしたい場合は、次のURLを参考にして依存ライブラリを追加する必要がある。
-        // https://docs.datastax.com/en/developer/java-driver/4.5/manual/core/metrics/#jmx
-        .withoutJMXReporting()
-
-    if (!cassandraUsername.isEmpty) {
-      builder.withCredentials(cassandraUsername, cassandraPassword)
+  /** Resolve a driver config loader instance from [[driverConfigPath]].
+    *
+    * Returns a [[scala.util.Failure]] if the config loader cannot be resolved.
+    * There might be some reasons to fail, such as
+    *  - [[com.typesafe.config.ConfigException.Missing]]  The value of the driver config path is absent or null.
+    *  - [[com.typesafe.config.ConfigException.WrongType]]  The value is not convertible to a Config
+    *  - [[IllegalArgumentException]] One of execution profiles (read-profile and write-profiles) doesn't exist.
+    */
+  def resolveDriverConfigLoader(systemProvider: ClassicActorSystemProvider): Try[DriverConfigLoader] = Try {
+    val driverConfig          = systemProvider.classicSystem.settings.config.getConfig(driverConfigPath)
+    val configLoader          = new DefaultDriverConfigLoader(() => driverConfig, false)
+    val profiles              = configLoader.getInitialConfig.getProfiles
+    val isReadProfileMissing  = !profiles.containsKey(readProfileName)
+    val isWriteProfileMissing = !profiles.containsKey(writeProfileName)
+    if (isReadProfileMissing || isWriteProfileMissing) {
+      val readProfilePath  = s"${driverConfigPath}.profiles.${readProfileName}"
+      val writeProfilePath = s"${driverConfigPath}.profiles.${writeProfileName}"
+      throw new IllegalArgumentException(s"""
+              |The driver execution profile is missing.
+              |Read Profile: path="${readProfilePath}", missing=${isReadProfileMissing.toString}
+              |Write Profile: path="${writeProfilePath}", missing=${isWriteProfileMissing.toString}
+              |""".stripMargin)
     }
-
-    cassandraLoadBalancingPolicy.foreach { policy =>
-      builder.withLoadBalancingPolicy(policy)
-    }
-
-    cassandraContactPoints
-      .foldLeft(builder) { (builder, contact) =>
-        builder.addContactPoint(contact)
-      }.build()
+    configLoader
   }
+
 }

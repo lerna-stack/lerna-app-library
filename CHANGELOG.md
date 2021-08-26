@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v2.0.0...main
 
 ### Changed
-- Update `cassandra-driver-core` to `3.11.0` from `3.7.1`
+- `lerna-util-sequence`
+    - Upgrade DataStax Java Driver `java-driver-core` to `4.13.0`  
+      Some migration is needed.
+      See [migration guide](doc/migration-guide.md#300-from-200).
 
 
 ## [v2.0.0] - 2021-07-16

@@ -8,7 +8,7 @@ object Dependencies {
     val airframe              = "20.9.0"
     val akka                  = "2.6.8"
     val akkaHTTP              = "10.2.4"
-    val cassandraDriverCore   = "3.11.0"
+    val datastaxJavaDriver    = "4.13.0"
     val kamonCore             = "2.1.18"
     val kamonSystemMetrics    = "2.1.18"
     val logbackClassic        = "1.2.3"
@@ -16,6 +16,7 @@ object Dependencies {
     val scalactic             = "3.1.4"
     val scalaXML              = "1.2.0"
     val scalaCollectionCompat = "2.4.4"
+    val scalaJava8Compat      = "1.0.0"
     val slf4jAPI              = "1.7.30"
     val typesafeConfig        = "1.4.0"
     val wireMock              = "2.27.2"
@@ -65,6 +66,9 @@ object Dependencies {
     // For cross building
     lazy val scalaCollectionCompat =
       "org.scala-lang.modules" %% "scala-collection-compat" % Versions.scalaCollectionCompat
+    lazy val scalaJava8Compat =
+      "org.scala-lang.modules" %% "scala-java8-compat" % Versions.scalaJava8Compat
+
   }
 
   object ScalaTest {
@@ -76,8 +80,7 @@ object Dependencies {
   }
 
   object DataStax {
-    // TODO DataStaxを直接使用しない or DataStax 4.x に移行する。
-    val cassandraDriverCore = "com.datastax.cassandra" % "cassandra-driver-core" % Versions.cassandraDriverCore
+    val javaDriverCore = "com.datastax.oss" % "java-driver-core" % Versions.datastaxJavaDriver
   }
 
   object Accord {
