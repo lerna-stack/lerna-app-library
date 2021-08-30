@@ -115,7 +115,7 @@ private[sequence] final class SequenceFactoryWorker(
 
   def createBehavior(): Behavior[Command] = {
     context.self ! Initialize
-    notReady
+    notReady(initializeTried = false)
   }
 
   private val responseMapper: ActorRef[SequenceStore.ReservationResponse] =
@@ -128,127 +128,136 @@ private[sequence] final class SequenceFactoryWorker(
     reservationFactor = reservationFactor,
   )
 
-  private[this] def notReady = Behaviors.receiveMessage[Command] {
+  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
+  private[this] def notReady(initializeTried: Boolean): Behavior[Command] = Behaviors.receiveMessage[Command] {
     case Initialize =>
       sequenceStore ! SequenceStore.InitialReserveSequence(firstValue, reservationAmount, sequenceSubId, responseMapper)
       Behaviors.same
     case WrappedSequenceStoreResponse(msg: SequenceStore.InitialSequenceReserved) =>
-      implicit val sequenceContext: SequenceContext =
+      logger.info("initial reserved: max:{}, initial:{}", msg.maxReservedValue, msg.initialValue)
+      val sequenceContext: SequenceContext =
         SequenceContext(msg.maxReservedValue, nextValue = msg.initialValue)
-      if (sequenceContext.isOverflow) {
-        sequenceStore ! SequenceStore.ResetReserveSequence(firstValue, reservationAmount, sequenceSubId, responseMapper)
-        resetting
-      } else {
-        logger.info("initial reserved: max:{}, initial:{}", msg.maxReservedValue, msg.initialValue)
-        stashBuffer.unstashAll(ready)
-      }
+      stashBuffer.unstashAll(prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext))
+    case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed) =>
+      notReady(initializeTried = true)
     case message: GenerateSequence =>
+      if (initializeTried) {
+        context.self ! Initialize
+      }
       stashBuffer.stash(message)
       Behaviors.same
     case ReceiveTimeout                                                  => Behaviors.stopped
     case WrappedSequenceStoreResponse(_: SequenceStore.SequenceReserved) => Behaviors.unhandled
     case WrappedSequenceStoreResponse(_: SequenceStore.SequenceReset)    => Behaviors.unhandled
-    case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed)   => Behaviors.unhandled // FIXME
   }
 
-  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity", "org.wartremover.warts.Recursion"))
-  private[this] def ready(implicit sequenceContext: SequenceContext): Behavior[Command] =
-    Behaviors.receiveMessage[Command] {
-      case msg: GenerateSequence =>
-        if (msg.sequenceSubId === sequenceSubId) {
-
-          if (!sequenceContext.isOverflow) {
-            msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
-            logger.debug("SequenceGenerated when ready: {}", sequenceContext.nextValue)
-          } else {
-            stashBuffer.stash(msg)
-          }
-
-          val nextSequence = sequenceContext.next()
-
-          if (nextSequence.isOverflow) {
-            sequenceStore ! SequenceStore.ResetReserveSequence(
-              firstValue,
-              reservationAmount,
-              sequenceSubId,
-              responseMapper,
-            )
-            resetting
-          } else if (nextSequence.isStarving) {
-            val freeAmount = nextSequence.freeAmount
-            logger.info(
-              "Reserving sequence: remain {}, add {}, current max reserved: {}",
-              sequenceContext.remainAmount,
-              freeAmount,
-              sequenceContext.maxReservedValue,
-            )
-            sequenceStore ! SequenceStore.ReserveSequence(
-              sequenceContext.maxReservedValue,
-              freeAmount,
-              sequenceSubId,
-              responseMapper,
-            )
-            reserving(nextSequence)
-          } else {
-            ready(nextSequence)
-          }
-        } else {
-          Behaviors.unhandled
-        }
-      case ReceiveTimeout                  => Behaviors.stopped
-      case Initialize                      => Behaviors.unhandled
-      case _: WrappedSequenceStoreResponse => Behaviors.unhandled
-    }
-
-  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity", "org.wartremover.warts.Recursion"))
-  private[this] def reserving(implicit sequenceContext: SequenceContext): Behavior[Command] =
-    Behaviors.receiveMessage {
-      case msg: GenerateSequence =>
-        if (msg.sequenceSubId === sequenceSubId) {
-          if (sequenceContext.isOverflow) {
-            stashBuffer.stash(msg)
-            sequenceStore ! SequenceStore.ResetReserveSequence(
-              firstValue,
-              reservationAmount,
-              sequenceSubId,
-              responseMapper,
-            )
-            resetting
-          } else if (sequenceContext.isEmpty) {
-            logger.warn("Pending generate sequence because reserving sequence: {}", sequenceContext.nextValue)
-            stashBuffer.stash(msg)
-            Behaviors.same
-          } else {
-            msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
-            logger.debug("SequenceGenerated when reserving: {}", sequenceContext.nextValue)
-            reserving(sequenceContext.next())
-          }
-        } else {
-          Behaviors.unhandled
-        }
-      case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReserved) =>
-        stashBuffer.unstashAll(ready(sequenceContext.copy(maxReservedValue = msg.maxReservedValue)))
-      case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed) =>
-        // 即座にリトライしたところで予約できる見込みは薄いケースがあるので、
-        // クライアントから再び採番を要求されたときにリトライする方針とする
-        stashBuffer.unstashAll(ready)
-      case ReceiveTimeout                                                         => Behaviors.stopped
-      case Initialize                                                             => Behaviors.unhandled
-      case WrappedSequenceStoreResponse(_: SequenceStore.InitialSequenceReserved) => Behaviors.unhandled
-      case WrappedSequenceStoreResponse(_: SequenceStore.SequenceReset)           => Behaviors.unhandled
-    }
-
-  private[this] def resetting: Behavior[Command] = Behaviors.receiveMessage[Command] {
-    case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReset) =>
-      logger.warn("reset sequence: {}", msg.maxReservedValue)
-      stashBuffer.unstashAll(ready(SequenceContext(msg.maxReservedValue, nextValue = firstValue)))
-    case message: GenerateSequence =>
-      stashBuffer.stash(message)
-      Behaviors.same
+  private[this] def ready(sequenceContext: SequenceContext): Behavior[Command] = Behaviors.receiveMessage {
+    case msg: GenerateSequence =>
+      if (msg.sequenceSubId === sequenceSubId) {
+        acceptGenerateSequence(msg, sequenceContext)
+      } else Behaviors.unhandled
+    case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReserved) =>
+      handleSequenceReserved(msg, sequenceContext)
+    case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed)          => Behaviors.same
     case ReceiveTimeout                                                         => Behaviors.stopped
     case Initialize                                                             => Behaviors.unhandled
     case WrappedSequenceStoreResponse(_: SequenceStore.InitialSequenceReserved) => Behaviors.unhandled
-    case WrappedSequenceStoreResponse(_: SequenceStore.SequenceReserved)        => Behaviors.unhandled
-    case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed)          => Behaviors.unhandled // FIXME
+    case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReset)         =>
+      // reset するときは必ず empty になっているため
+      Behaviors.unhandled
+  }
+
+  private[this] def empty(sequenceContext: SequenceContext): Behavior[Command] = Behaviors.receiveMessage {
+    case msg: GenerateSequence =>
+      // no reply
+      logger.warn(
+        "Pending generate sequence because reserving sequence: current max reserved: {}, next sequence value: {}",
+        sequenceContext.maxReservedValue,
+        sequenceContext.nextValue,
+      )
+      stashBuffer.stash(msg)
+      prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext)
+    case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReserved) =>
+      stashBuffer.unstashAll(handleSequenceReserved(msg, sequenceContext))
+    case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReset) =>
+      stashBuffer.unstashAll(handleSequenceReset(msg, sequenceContext))
+    case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed)          => Behaviors.same
+    case ReceiveTimeout                                                         => Behaviors.stopped
+    case Initialize                                                             => Behaviors.unhandled
+    case WrappedSequenceStoreResponse(_: SequenceStore.InitialSequenceReserved) => Behaviors.unhandled
+  }
+
+  private[this] def acceptGenerateSequence(
+      msg: GenerateSequence,
+      sequenceContext: SequenceContext,
+  ): Behavior[Command] = {
+    msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
+    logger.debug("SequenceGenerated: {}", sequenceContext.nextValue)
+    prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext.next())
+  }
+
+  private[this] def prepareNextSequence(
+      sequenceContext: SequenceContext,
+      nextSequence: SequenceContext,
+  ): Behavior[Command] = {
+    if (nextSequence.isOverflow) {
+      reset()
+      empty(nextSequence)
+    } else if (nextSequence.isEmpty) {
+      empty(nextSequence)
+    } else if (nextSequence.isStarving) {
+      reserve(sequenceContext = sequenceContext, nextSequence = nextSequence)
+      ready(nextSequence)
+    } else {
+      ready(nextSequence)
+    }
+  }
+
+  private[this] def reserve(sequenceContext: SequenceContext, nextSequence: SequenceContext): Unit = {
+    val freeAmount = nextSequence.freeAmount
+    logger.info(
+      "Reserving sequence: remain {}, add {}, current max reserved: {}",
+      sequenceContext.remainAmount,
+      freeAmount,
+      sequenceContext.maxReservedValue,
+    )
+    sequenceStore ! SequenceStore.ReserveSequence(
+      sequenceContext.maxReservedValue,
+      freeAmount,
+      sequenceSubId,
+      responseMapper,
+    )
+  }
+
+  private[this] def handleSequenceReserved(
+      msg: SequenceStore.SequenceReserved,
+      sequenceContext: SequenceContext,
+  ): Behavior[Command] = {
+    val nextSequence = sequenceContext.copy(maxReservedValue = msg.maxReservedValue)
+    if (nextSequence.isOverflow) {
+      empty(nextSequence)
+    } else if (nextSequence.isEmpty) {
+      empty(nextSequence)
+    } else {
+      ready(nextSequence)
+    }
+  }
+
+  private[this] def reset(): Unit = {
+    sequenceStore ! SequenceStore.ResetReserveSequence(
+      firstValue,
+      reservationAmount,
+      sequenceSubId,
+      responseMapper,
+    )
+  }
+
+  private[this] def handleSequenceReset(
+      msg: SequenceStore.SequenceReset,
+      sequenceContext: SequenceContext,
+  ): Behavior[Command] = {
+    logger.warn("reset sequence: {}", msg.maxReservedValue)
+    val nextSequence = SequenceContext(msg.maxReservedValue, nextValue = firstValue)
+    prepareNextSequence(sequenceContext, nextSequence)
   }
 }
