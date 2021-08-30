@@ -74,7 +74,12 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
 
     /** 追加で予約可能なシーケンスの数 */
     def freeAmount(implicit config: SequenceConfig): Int =
-      (config.reservationAmount - remainAmount).toInt
+      Math.min(
+        // 予約数制限（reservationAmount）の中で採番可能なシーケンスの数
+        (config.reservationAmount - remainAmount).toInt,
+        // 最大シーケンス番号（maxSequenceValue）までの間で採番可能なシーケンスの数
+        ((config.maxSequenceValue - nextValue) / config.incrementStep).toInt,
+      )
 
     /** 発行できるシーケンスの最大値を超えている */
     def isOverflow(implicit config: SequenceConfig): Boolean =
@@ -206,24 +211,28 @@ private[sequence] final class SequenceFactoryWorker(
     } else if (nextSequence.isEmpty) {
       empty(nextSequence)
     } else if (nextSequence.isStarving) {
-      reserve(sequenceContext = sequenceContext, nextSequence = nextSequence)
-      ready(nextSequence)
+      val freeAmount = nextSequence.freeAmount
+      if (freeAmount > 0) {
+        reserve(sequenceContext = sequenceContext, amount = freeAmount)
+        ready(nextSequence)
+      } else {
+        ready(nextSequence)
+      }
     } else {
       ready(nextSequence)
     }
   }
 
-  private[this] def reserve(sequenceContext: SequenceContext, nextSequence: SequenceContext): Unit = {
-    val freeAmount = nextSequence.freeAmount
+  private[this] def reserve(sequenceContext: SequenceContext, amount: Int): Unit = {
     logger.info(
       "Reserving sequence: remain {}, add {}, current max reserved: {}",
       sequenceContext.remainAmount,
-      freeAmount,
+      amount,
       sequenceContext.maxReservedValue,
     )
     sequenceStore ! SequenceStore.ReserveSequence(
       sequenceContext.maxReservedValue,
-      freeAmount,
+      amount,
       sequenceSubId,
       responseMapper,
     )
