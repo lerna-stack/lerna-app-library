@@ -53,7 +53,41 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
   sealed trait DomainEvent
   final case class SequenceGenerated(value: BigInt, sequenceSubId: Option[String]) extends DomainEvent
 
-  final case class SequenceContext(maxReservedValue: BigInt, nextValue: BigInt)
+  final case class SequenceConfig(
+      maxSequenceValue: BigInt,
+      incrementStep: Int,
+      reservationAmount: Int,
+      reservationFactor: Int,
+  )
+
+  final case class SequenceContext(maxReservedValue: BigInt, nextValue: BigInt) {
+
+    /** 採番値を次に進める */
+    def next()(implicit config: SequenceConfig): SequenceContext =
+      copy(nextValue = nextValue + config.incrementStep)
+
+    /** 採番可能なシーケンスの残数 */
+    def remainAmount(implicit config: SequenceConfig): BigInt =
+      if (maxReservedValue > nextValue) {
+        (maxReservedValue - nextValue) / config.incrementStep
+      } else BigInt(0)
+
+    /** 追加で予約可能なシーケンスの数 */
+    def freeAmount(implicit config: SequenceConfig): Int =
+      (config.reservationAmount - remainAmount).toInt
+
+    /** 発行できるシーケンスの最大値を超えている */
+    def isOverflow(implicit config: SequenceConfig): Boolean =
+      nextValue > config.maxSequenceValue
+
+    /** 発行できるシーケンスが少なくなっている */
+    def isStarving(implicit config: SequenceConfig): Boolean =
+      remainAmount <= (config.reservationAmount / config.reservationFactor)
+
+    /** 発行できるシーケンスがない */
+    def isEmpty: Boolean =
+      nextValue > maxReservedValue
+  }
 }
 
 private[sequence] final class SequenceFactoryWorker(
@@ -87,17 +121,26 @@ private[sequence] final class SequenceFactoryWorker(
   private val responseMapper: ActorRef[SequenceStore.ReservationResponse] =
     context.messageAdapter(response => WrappedSequenceStoreResponse(response))
 
+  private[this] implicit val config: SequenceConfig = SequenceConfig(
+    maxSequenceValue = maxSequenceValue,
+    incrementStep = incrementStep,
+    reservationAmount = reservationAmount,
+    reservationFactor = reservationFactor,
+  )
+
   private[this] def notReady = Behaviors.receiveMessage[Command] {
     case Initialize =>
       sequenceStore ! SequenceStore.InitialReserveSequence(firstValue, reservationAmount, sequenceSubId, responseMapper)
       Behaviors.same
     case WrappedSequenceStoreResponse(msg: SequenceStore.InitialSequenceReserved) =>
-      if (msg.initialValue > maxSequenceValue) {
+      implicit val sequenceContext: SequenceContext =
+        SequenceContext(msg.maxReservedValue, nextValue = msg.initialValue)
+      if (sequenceContext.isOverflow) {
         sequenceStore ! SequenceStore.ResetReserveSequence(firstValue, reservationAmount, sequenceSubId, responseMapper)
         resetting
       } else {
         logger.info("initial reserved: max:{}, initial:{}", msg.maxReservedValue, msg.initialValue)
-        stashBuffer.unstashAll(ready(SequenceContext(msg.maxReservedValue, nextValue = msg.initialValue)))
+        stashBuffer.unstashAll(ready)
       }
     case message: GenerateSequence =>
       stashBuffer.stash(message)
@@ -113,22 +156,17 @@ private[sequence] final class SequenceFactoryWorker(
     Behaviors.receiveMessage[Command] {
       case msg: GenerateSequence =>
         if (msg.sequenceSubId === sequenceSubId) {
-          import sequenceContext._
 
-          if (nextValue <= maxSequenceValue) {
-            msg.replyTo ! SequenceGenerated(nextValue, sequenceSubId)
-            logger.debug("SequenceGenerated when ready: {}", nextValue)
+          if (!sequenceContext.isOverflow) {
+            msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
+            logger.debug("SequenceGenerated when ready: {}", sequenceContext.nextValue)
           } else {
             stashBuffer.stash(msg)
           }
 
-          val newNextValue = nextValue + incrementStep
-          val remainAmount = // 残数
-            if (maxReservedValue > newNextValue) {
-              (maxReservedValue - newNextValue) / incrementStep
-            } else BigInt(0)
+          val nextSequence = sequenceContext.next()
 
-          if (newNextValue > maxSequenceValue) {
+          if (nextSequence.isOverflow) {
             sequenceStore ! SequenceStore.ResetReserveSequence(
               firstValue,
               reservationAmount,
@@ -136,18 +174,23 @@ private[sequence] final class SequenceFactoryWorker(
               responseMapper,
             )
             resetting
-          } else if (remainAmount <= (reservationAmount / reservationFactor)) {
-            val amount = (reservationAmount - remainAmount).toInt
+          } else if (nextSequence.isStarving) {
+            val freeAmount = nextSequence.freeAmount
             logger.info(
               "Reserving sequence: remain {}, add {}, current max reserved: {}",
-              remainAmount,
-              amount,
-              maxReservedValue,
+              sequenceContext.remainAmount,
+              freeAmount,
+              sequenceContext.maxReservedValue,
             )
-            sequenceStore ! SequenceStore.ReserveSequence(maxReservedValue, amount, sequenceSubId, responseMapper)
-            reserving(sequenceContext.copy(nextValue = newNextValue))
+            sequenceStore ! SequenceStore.ReserveSequence(
+              sequenceContext.maxReservedValue,
+              freeAmount,
+              sequenceSubId,
+              responseMapper,
+            )
+            reserving(nextSequence)
           } else {
-            ready(sequenceContext.copy(nextValue = newNextValue))
+            ready(nextSequence)
           }
         } else {
           Behaviors.unhandled
@@ -162,9 +205,7 @@ private[sequence] final class SequenceFactoryWorker(
     Behaviors.receiveMessage {
       case msg: GenerateSequence =>
         if (msg.sequenceSubId === sequenceSubId) {
-          import sequenceContext._
-
-          if (nextValue > maxSequenceValue) {
+          if (sequenceContext.isOverflow) {
             stashBuffer.stash(msg)
             sequenceStore ! SequenceStore.ResetReserveSequence(
               firstValue,
@@ -173,14 +214,14 @@ private[sequence] final class SequenceFactoryWorker(
               responseMapper,
             )
             resetting
-          } else if (nextValue > maxReservedValue) {
-            logger.warn("Pending generate sequence because reserving sequence: {}", nextValue)
+          } else if (sequenceContext.isEmpty) {
+            logger.warn("Pending generate sequence because reserving sequence: {}", sequenceContext.nextValue)
             stashBuffer.stash(msg)
             Behaviors.same
           } else {
-            msg.replyTo ! SequenceGenerated(nextValue, sequenceSubId)
-            logger.debug("SequenceGenerated when reserving: {}", nextValue)
-            reserving(sequenceContext.copy(nextValue = nextValue + incrementStep))
+            msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
+            logger.debug("SequenceGenerated when reserving: {}", sequenceContext.nextValue)
+            reserving(sequenceContext.next())
           }
         } else {
           Behaviors.unhandled
