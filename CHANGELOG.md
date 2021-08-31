@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v2.0.0...main
 
 ### Changed
+- Update `wiremock-jre8` to `2.30.1` from `2.27.2`
 - Update `cassandra-driver-core` to `3.11.0` from `3.7.1`
 
 

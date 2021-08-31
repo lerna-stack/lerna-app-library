@@ -123,7 +123,7 @@ final class MySpec extends AnyWordSpecLike with Matchers with DISessionSupport {
 ## WireMock
 If you use *WireMock* related features, You need to add `wiremock-jre8` into `libraryDependencies` like the following.
 ```sbt
-libraryDependencies += "com.github.tomakehurst" % "wiremock-jre8" % "2.27.2" % Test
+libraryDependencies += "com.github.tomakehurst" % "wiremock-jre8" % "2.30.1" % Test
 ```
 
 ### ExternalServiceMock
