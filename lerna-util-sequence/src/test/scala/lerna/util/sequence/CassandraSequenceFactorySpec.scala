@@ -112,12 +112,10 @@ class CassandraSequenceFactorySpec
       })
 
       whenReady(futures) { results =>
-        expect {
-          results.forall(_ === BigInt(1)) // 初項は node-id
-
-          // 全部 採番成功して値がある(そもそもFutureがSuccessなら問題ない)
-          results.size === numberOfValues
-        }
+        // 初項は node-id
+        expect(results.forall(_ === BigInt(1)))
+        // 全部 採番成功して値がある(そもそもFutureがSuccessなら問題ない)
+        expect(results.size === numberOfValues)
       }
     }
 

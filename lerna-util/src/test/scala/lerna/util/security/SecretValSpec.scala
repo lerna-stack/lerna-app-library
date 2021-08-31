@@ -46,10 +46,8 @@ class SecretValSpec extends LernaUtilBaseSpec {
 
     "機密情報のみマスキングされる" in {
       val masked = ExampleContainer(name = "_name_", ExampleValue("_password_").asSecret).toString
-      expect {
-        masked.contains("_name_")
-        !masked.contains("_password_")
-      }
+      expect(masked.contains("_name_"))
+      expect(!masked.contains("_password_"))
     }
   }
 }
