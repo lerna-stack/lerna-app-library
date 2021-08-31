@@ -18,7 +18,7 @@ object Dependencies {
     val scalaCollectionCompat = "2.4.4"
     val slf4jAPI              = "1.7.30"
     val typesafeConfig        = "1.4.0"
-    val wireMock              = "2.27.2"
+    val wireMock              = "2.30.1"
   }
 
   object Typesafe {
