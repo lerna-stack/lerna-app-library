@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v2.0.0...main
 
 ### Changed
+- Update `wiremock-jre8` to `2.30.1` from `2.27.2`
 - `lerna-util-sequence`
     - Upgrade DataStax Java Driver `java-driver-core` to `4.13.0`  
       Some migration is needed.
