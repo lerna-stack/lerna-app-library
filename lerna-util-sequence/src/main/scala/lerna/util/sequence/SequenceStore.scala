@@ -40,12 +40,17 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
     }
 
     // SupervisorStrategy
-    // see also https://docs.datastax.com/en/developer/java-driver/4.13/manual/core/retries/#retries
+    // 基本方針として、Cassandra に再接続しなくても回復できそうな例外は  resume する。
+    // それ以外の例外は、Cassandra に再接続しなおすため restart する。
+    //
+    // 発生しうる例外は、次のリンクから確認できる。
+    // https://docs.datastax.com/en/developer/java-driver/4.13/manual/core/retries/#retries
+    //
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
     // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
-    // その他の例外は restart して、回復することを期待する
+    // その他の例外は restart して Cassandra に再接続することで、回復することを期待する
     behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
     behavior
   }
