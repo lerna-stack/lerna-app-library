@@ -47,10 +47,8 @@ class EnumJsonFormatSpec extends LernaHttpRouteBaseSpec {
     "区分値にある値を受け取ったら case class に変換される" in {
 
       Post("/", HttpEntity(`application/json`, """{ "code": "01" }""")) ~> Route.seal(route) ~> check {
-        expect {
-          status === StatusCodes.OK
-          responseAs[ExampleCode] === ExampleCode.One
-        }
+        expect(status === StatusCodes.OK)
+        expect(responseAs[ExampleCode] === ExampleCode.One)
       }
     }
 

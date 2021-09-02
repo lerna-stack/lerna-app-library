@@ -45,11 +45,9 @@ class FailureSkipFlowSpec extends LernaAkkaActorBaseSpec(ActorSystem("FailureSki
       val result = Source(elements).via(flow).runWith(Sink.seq[Int])
 
       whenReady(result) { seq =>
-        expect {
-          seq === Seq(1, 2, 4)
-          failureElement === Option(3)
-          cause === Option(failure)
-        }
+        expect(seq === Seq(1, 2, 4))
+        expect(failureElement === Option(3))
+        expect(cause === Option(failure))
       }
     }
 

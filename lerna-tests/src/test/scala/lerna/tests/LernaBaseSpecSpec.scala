@@ -15,13 +15,6 @@ final class LernaBaseSpecSpec extends LernaBaseSpec {
         */
     }
 
-    "複数項目チェックする場合" in {
-      expect {
-        "1" === "1"
-        "2" === "2"
-      }
-    }
-
     "条件を満たさない場合はAssertionErrorになる" in {
       assertThrows[AssertionError] {
         expect("1" === "2")
