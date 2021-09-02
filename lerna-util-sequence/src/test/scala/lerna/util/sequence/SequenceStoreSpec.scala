@@ -146,6 +146,99 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
+    "採番値の予約中に立て続けで予約要求された場合は最後の予約要求のみを受け付け、それ以外の要求を無視する" in {
+      val store = spawn(
+        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
+      )
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      // 採番予約: 1 回目（初期化）
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 2 回目（初期化）
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 3 回目（初期化）
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // initialValue = firstValue or 直前の maxReservedValue + incrementStep
+      // maxReservedValue = initialValue + (incrementStep * (reservationAmount - 1))
+      // 採番予約: 1 回目分
+      testProbe.expectMessage(SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301))
+      // 採番予約: 3 回目分
+      testProbe.expectMessage(SequenceStore.InitialSequenceReserved(initialValue = 304, maxReservedValue = 604))
+
+      // 採番予約: 1 回目
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 604,
+        reservationAmount = 10,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 2 回目
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 604,
+        reservationAmount = 20,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 3 回目
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 604,
+        reservationAmount = 30,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // maxReservedValue = 直前の maxReservedValue + (incrementStep * reservationAmount)
+      // 採番予約: 1 回目分
+      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 634))
+      // 採番予約: 3 回目分
+      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 694))
+      // 1 回目分の採番予約中に行われた 2 回目、3 回目の予約のうち、最後の 3 回目の予約のみを受け付ける
+
+      // 採番予約: 1 回目
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 694,
+        reservationAmount = 10,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 2 回目 （リセット）
+      store ! SequenceStore.ResetReserveSequence(
+        firstValue = 1,
+        reservationAmount = 30,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // 採番予約: 3 回目 （リセット）
+      store ! SequenceStore.ResetReserveSequence(
+        firstValue = 1,
+        reservationAmount = 30,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // maxReservedValue = 直前の maxReservedValue + (incrementStep * reservationAmount)
+      // 採番予約: 1 回目分
+      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 724))
+      // 採番予約: 3 回目分
+      testProbe.expectMessage(SequenceStore.SequenceReset(maxReservedValue = 91))
+      // 1 回目分の採番予約中に行われた 2 回目、3 回目の予約のうち、最後の 3 回目の予約のみを受け付ける
+
+      testKit.stop(store)
+    }
+
     "再起動したときに保存した予約値が復元できる" in {
       val sequenceId    = generateUniqueId()
       val nodeId        = 1
