@@ -1,8 +1,8 @@
 package lerna.util.sequence
 
 import akka.actor.ClassicActorSystemProvider
+import akka.stream.alpakka.cassandra.DriverConfigLoaderFromConfig
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader
-import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader
 import com.typesafe.config.Config
 import lerna.util.tenant.Tenant
 import lerna.util.time.JavaDurationConverters._
@@ -81,7 +81,7 @@ private[sequence] class SequenceFactoryCassandraConfig(baseConfig: Config)(impli
     */
   def resolveDriverConfigLoader(systemProvider: ClassicActorSystemProvider): Try[DriverConfigLoader] = Try {
     val driverConfig          = systemProvider.classicSystem.settings.config.getConfig(driverConfigPath)
-    val configLoader          = new DefaultDriverConfigLoader(() => driverConfig, false)
+    val configLoader          = DriverConfigLoaderFromConfig.fromConfig(driverConfig)
     val profiles              = configLoader.getInitialConfig.getProfiles
     val isReadProfileMissing  = !profiles.containsKey(readProfileName)
     val isWriteProfileMissing = !profiles.containsKey(writeProfileName)

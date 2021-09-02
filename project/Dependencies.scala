@@ -8,7 +8,7 @@ object Dependencies {
     val airframe              = "20.9.0"
     val akka                  = "2.6.8"
     val akkaHTTP              = "10.2.4"
-    val datastaxJavaDriver    = "4.13.0"
+    val alpakkaCassandra      = "2.0.2"
     val kamonCore             = "2.1.18"
     val kamonSystemMetrics    = "2.1.18"
     val logbackClassic        = "1.2.3"
@@ -41,6 +41,10 @@ object Dependencies {
     val http        = "com.typesafe.akka" %% "akka-http"            % Versions.akkaHTTP
     val sprayJson   = "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHTTP
     val httpTestKit = "com.typesafe.akka" %% "akka-http-testkit"    % Versions.akkaHTTP
+  }
+
+  object Alpakka {
+    val cassandra = "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % Versions.alpakkaCassandra
   }
 
   object Kamon {
@@ -77,10 +81,6 @@ object Dependencies {
 
   object Airframe {
     val airframe = "org.wvlet.airframe" %% "airframe" % Versions.airframe
-  }
-
-  object DataStax {
-    val javaDriverCore = "com.datastax.oss" % "java-driver-core" % Versions.datastaxJavaDriver
   }
 
   object Accord {
