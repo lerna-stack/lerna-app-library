@@ -203,15 +203,12 @@ private[sequence] final class SequenceStore(
     Behaviors
       .receiveMessage[Command] {
         case message: InitialReserveSequence =>
-          stashBuffer.clear()
           stashBuffer.stash(message)
           Behaviors.same
         case message: ReserveSequence =>
-          stashBuffer.clear()
           stashBuffer.stash(message)
           Behaviors.same
         case message: ResetReserveSequence =>
-          stashBuffer.clear()
           stashBuffer.stash(message)
           Behaviors.same
         case event: InitialSequenceReserved =>
