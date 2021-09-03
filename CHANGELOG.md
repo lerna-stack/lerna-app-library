@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `wiremock-jre8` to `2.30.1` from `2.27.2`
 - Update `cassandra-driver-core` to `3.11.0` from `3.7.1`
 
+### Fixed
+- `lerna-util-sequence`
+  - Can not generating sequence number correctly on corner cases [#49](https://github.com/lerna-stack/lerna-app-library/issues/49)
 
 ## [v2.0.0] - 2021-07-16
 [v2.0.0]: https://github.com/lerna-stack/lerna-app-library/compare/v1.0.0...v2.0.0
