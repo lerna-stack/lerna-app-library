@@ -4,10 +4,11 @@ import akka.Done
 import akka.actor.NoSerializationVerificationNeeded
 import akka.actor.typed._
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
-import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.connection.{ ClosedConnectionException, HeartbeatException }
 import com.datastax.oss.driver.api.core.cql.{ PreparedStatement, Row, Statement }
-import com.datastax.oss.driver.api.core.servererrors.{ ReadTimeoutException, WriteTimeoutException }
+import com.datastax.oss.driver.api.core.servererrors._
 import com.datastax.oss.driver.api.core.session.Session
+import com.datastax.oss.driver.api.core.{ AllNodesFailedException, CqlSession, DriverTimeoutException }
 import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
 import lerna.util.tenant.Tenant
@@ -39,19 +40,114 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
       }
     }
 
+    //
     // SupervisorStrategy
     // 基本方針として、Cassandra に再接続しなくても回復できそうな例外は  resume する。
-    // それ以外の例外は、Cassandra に再接続しなおすため restart する。
+    // それ以外の例外は、Cassandra に再接続するため restart する。
     //
     // 発生しうる例外は、次のリンクから確認できる。
     // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#retries
     //
-    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+    // DefaultRetryPolicy は、次のリンクから確認できる。
+    // https://github.com/datastax/java-driver/blob/4.6.0/core/src/main/java/com/datastax/oss/driver/internal/core/retry/DefaultRetryPolicy.java
+    //
+    // 最終的に Exception は restart するため 一部コードは冗長であるが、
+    // エラー発生状況を明示することを目的としてそのまま記載している。
+    //
+
+    // Consistency Level を満たせる十分な Replica が存在しない。
+    // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてもよい。
+    //
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-unavailable
+    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/UnavailableException.html
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[UnavailableException](SupervisorStrategy.resume)
+
+    // 一時的にレプリカが処理できなくなっている。
+    // Cassandra サイドで回復することを期待する。Cassandra に再接続しなくてもよい。
+    //
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-read-timeout
+    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadTimeoutException.html
+    //
     behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
-    // 一時的にレプリカが処理できなくなっているだけなので、Cassandra サイドで回復することを期待する
+
+    // 一時的にレプリカが処理できなくなっている。
+    // Cassandra サイドで回復することを期待する。Cassandra に再接続しなくてもよい。
+    //
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-write-timeout
+    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteTimeoutException.html
+    //
     behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
+
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-request-aborted
+    //
+    // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/ClosedConnectionException.html
+    // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/HeartbeatException.html
+    //
+    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
+    // DefaultRetryPolicy を使っている場合は、ドライバにて次ノードにリトライする。
+    // すべてのノードが応答しない場合、AllNodesFailedException が発生する。
+    // (AllNodeFailedExceptionは、このメソッドの下部で処理する)
+    //
+    // クエリが冪等でない場合、RetryPolicyはバイパスされ、これらの例外が発生する。
+    //
+    // これらの例外は再接続する方が恐らく安全である。
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[ClosedConnectionException](SupervisorStrategy.restart)
+    behavior = Behaviors.supervise(behavior).onFailure[HeartbeatException](SupervisorStrategy.restart)
+
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
+    //
+    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/OverloadedException.html
+    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ServerError.html
+    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/TruncateException.html
+    //
+    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
+    // DefaultRetryPolicy を使っている場合は、ドライバにて次ノードにリトライする。
+    // すべてのノードが応答しない場合、AllNodesFailedException が発生する。
+    // (AllNodeFailedExceptionは、このメソッドの下部で処理する)
+    //
+    // クエリが冪等でない場合、RetryPolicyはバイパスされ、これらの例外が発生する。
+    //
+    // Coordinator とは通信できているため、恐らく Cassandra に再接続する必要はない。
+    // ただし、過負荷やサーバでエラーが発生している状況のため、より安全な方法をとった方がよい。
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[OverloadedException](SupervisorStrategy.restart)
+    behavior = Behaviors.supervise(behavior).onFailure[ServerError](SupervisorStrategy.restart)
+    behavior = Behaviors.supervise(behavior).onFailure[TruncateException](SupervisorStrategy.restart)
+
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
+    //
+    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadFailureException.html
+    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteFailureException.html
+    //
+    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
+    // DefaultRetryPolicy を使っている場合は、これらの例外が発生する。クエリが冪等でない場合も、これらの例外が発生する。
+    // 他の RetryPolicy を使用した場合は、その実装に依存した例外が発生する可能性があるため注意すること。
+    //
+    // 一部 Replica がエラーを返しているような場合に発生することがある。
+    // Coordinator とは通信できているため、Cassandra に再接続する必要はない。
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[ReadFailureException](SupervisorStrategy.resume)
+    behavior = Behaviors.supervise(behavior).onFailure[WriteFailureException](SupervisorStrategy.resume)
+
+    // すべての Coordinator に対してクエリが失敗した。
+    // 自身が孤立しているか、Cassandra に災害 が発生している可能性がある。
+    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/AllNodesFailedException.html
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[AllNodesFailedException](SupervisorStrategy.restart)
+
+    // ドライバでタイムアウトが発生した。
+    // Coordinator が全く反応していない場合に発生する。
+    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/DriverTimeoutException.html
+    //
+    behavior = Behaviors.supervise(behavior).onFailure[DriverTimeoutException](SupervisorStrategy.restart)
+
+    //
     // その他の例外は restart して Cassandra に再接続することで、回復することを期待する
+    //
     behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
+
     behavior
   }
 
