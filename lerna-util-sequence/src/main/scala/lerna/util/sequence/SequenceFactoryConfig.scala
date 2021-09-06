@@ -1,15 +1,11 @@
 package lerna.util.sequence
 
-import akka.actor.ClassicActorSystemProvider
-import akka.stream.alpakka.cassandra.DriverConfigLoaderFromConfig
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader
 import com.typesafe.config.Config
 import lerna.util.tenant.Tenant
 import lerna.util.time.JavaDurationConverters._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 private[sequence] final class SequenceFactoryConfig(root: Config) {
 
@@ -41,9 +37,9 @@ private[sequence] final class SequenceFactoryConfig(root: Config) {
 private[sequence] class SequenceFactoryCassandraConfig(baseConfig: Config)(implicit tenant: Tenant) {
   private[this] val cassandraConfig = baseConfig.getConfig(s"cassandra.tenants.${tenant.id}")
 
-  val driverConfigPath: String = cassandraConfig.getString("datastax-java-driver-config")
-  val readProfileName: String  = cassandraConfig.getString("read-profile")
-  val writeProfileName: String = cassandraConfig.getString("write-profile")
+  val sessionProviderConfig: Config = cassandraConfig
+  val readProfileName: String       = cassandraConfig.getString("read-profile")
+  val writeProfileName: String      = cassandraConfig.getString("write-profile")
 
   val cassandraKeyspace: String = cassandraConfig.getString("keyspace")
   val cassandraTable: String    = cassandraConfig.getString("table")
@@ -70,31 +66,5 @@ private[sequence] class SequenceFactoryCassandraConfig(baseConfig: Config)(impli
             )
         }
       }.mkString(",")
-
-  /** Resolve a driver config loader instance from [[driverConfigPath]].
-    *
-    * Returns a [[scala.util.Failure]] if the config loader cannot be resolved.
-    * There might be some reasons to fail, such as
-    *  - [[com.typesafe.config.ConfigException.Missing]]  The value of the driver config path is absent or null.
-    *  - [[com.typesafe.config.ConfigException.WrongType]]  The value is not convertible to a Config
-    *  - [[IllegalArgumentException]] One of execution profiles (read-profile and write-profiles) doesn't exist.
-    */
-  def resolveDriverConfigLoader(systemProvider: ClassicActorSystemProvider): Try[DriverConfigLoader] = Try {
-    val driverConfig          = systemProvider.classicSystem.settings.config.getConfig(driverConfigPath)
-    val configLoader          = DriverConfigLoaderFromConfig.fromConfig(driverConfig)
-    val profiles              = configLoader.getInitialConfig.getProfiles
-    val isReadProfileMissing  = !profiles.containsKey(readProfileName)
-    val isWriteProfileMissing = !profiles.containsKey(writeProfileName)
-    if (isReadProfileMissing || isWriteProfileMissing) {
-      val readProfilePath  = s"${driverConfigPath}.profiles.${readProfileName}"
-      val writeProfilePath = s"${driverConfigPath}.profiles.${writeProfileName}"
-      throw new IllegalArgumentException(s"""
-              |The driver execution profile is missing.
-              |Read Profile: path="${readProfilePath}", missing=${isReadProfileMissing.toString}
-              |Write Profile: path="${writeProfilePath}", missing=${isWriteProfileMissing.toString}
-              |""".stripMargin)
-    }
-    configLoader
-  }
 
 }

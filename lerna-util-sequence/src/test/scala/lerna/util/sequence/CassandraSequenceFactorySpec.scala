@@ -56,7 +56,7 @@ class CassandraSequenceFactorySpec
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(baseConfig).cassandraConfig
 
   private lazy val session =
-    CqlSessionProvider.connect(system, cassandraConfig).futureValue
+    CassandraSessionProvider.connect(system, cassandraConfig)(system.dispatcher).futureValue
 
   override def beforeAll(): Unit = {
     super.beforeAll()

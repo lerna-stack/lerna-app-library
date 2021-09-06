@@ -32,7 +32,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(system.settings.config).cassandraConfig
 
   private lazy val session =
-    CqlSessionProvider.connect(system, cassandraConfig).futureValue
+    CassandraSessionProvider.connect(system, cassandraConfig)(system.executionContext).futureValue
 
   override def beforeAll(): Unit = {
     super.beforeAll()

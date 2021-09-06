@@ -325,7 +325,7 @@ private[sequence] final class SequenceStore(
       }.receiveSignal(close(sessionContext.session))
 
   private[this] def openSession(): Future[SessionOpened] = {
-    CqlSessionProvider
+    CassandraSessionProvider
       .connect(context.system, config)
       .map(SessionOpened.apply)
   }

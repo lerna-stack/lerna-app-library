@@ -35,6 +35,7 @@ object Dependencies {
     lazy val actorTestKitTyped    = "com.typesafe.akka" %% "akka-actor-testkit-typed"   % Versions.akka
     lazy val streamTestKit        = "com.typesafe.akka" %% "akka-stream-testkit"        % Versions.akka
     lazy val serializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % Versions.akka
+    lazy val discovery            = "com.typesafe.akka" %% "akka-discovery"             % Versions.akka
   }
 
   object AkkaHTTP {
