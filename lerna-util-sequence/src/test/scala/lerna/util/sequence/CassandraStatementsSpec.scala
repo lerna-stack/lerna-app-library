@@ -41,7 +41,7 @@ final class CassandraStatementsSpec
     new SequenceFactoryConfig(system.settings.config).cassandraConfig(tenant)
 
   private lazy val session =
-    CassandraSessionProvider.connect(system, cassandraConfig)(system.executionContext).futureValue
+    CqlSessionProvider.connect(system, cassandraConfig).futureValue
 
   private lazy val statements =
     new CassandraStatements(cassandraConfig)

@@ -357,7 +357,6 @@ lazy val lernaUtilSequence = lernaModule("lerna-util-sequence")
       Dependencies.Akka.stream,
       Dependencies.Alpakka.cassandra,
       Dependencies.Akka.actorTestKitTyped     % Test,
-      Dependencies.Akka.discovery             % Test,
       Dependencies.ScalaLang.scalaJava8Compat % Test,
     ),
   )
