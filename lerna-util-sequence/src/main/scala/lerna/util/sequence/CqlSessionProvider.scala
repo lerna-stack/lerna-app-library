@@ -18,6 +18,12 @@ private[sequence] object CqlSessionProvider {
       config: SequenceFactoryCassandraConfig,
   ): Future[CqlSession] = {
     implicit val executionContext: ExecutionContextExecutor = systemProvider.classicSystem.dispatcher
+    // NOTE:
+    //  Session 確立に Alpakka Cassandra の機能を活用することを検討しました。
+    //  例えば akka.stream.alpakka.cassandra.CqlSessionProvider を使用することで、
+    //  Akka Discovery を使用した Cassandra の contact points 検出などより高度な機能を提供できます。
+    //  幾つかの検討事項があり、採用を見送ることとしました。
+    //  https://github.com/lerna-stack/lerna-app-library/issues/58
     for {
       configLoader <- Future.fromTry(config.resolveDriverConfigLoader(systemProvider))
       session      <- CqlSession.builder().withConfigLoader(configLoader).buildAsync().toScala
