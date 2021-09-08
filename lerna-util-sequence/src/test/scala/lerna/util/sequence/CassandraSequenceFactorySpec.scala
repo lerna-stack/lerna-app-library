@@ -1,12 +1,12 @@
 package lerna.util.sequence
 
-import java.util.UUID
 import akka.actor.ActorSystem
 import com.typesafe.config.{ Config, ConfigFactory }
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 
+import java.util.UUID
 import scala.concurrent.Future
 
 object CassandraSequenceFactorySpec {
@@ -55,7 +55,8 @@ class CassandraSequenceFactorySpec
 
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(baseConfig).cassandraConfig
 
-  private[this] lazy val session = cassandraConfig.buildCassandraClusterConfig().connect()
+  private lazy val session =
+    CqlSessionProvider.connect(system, cassandraConfig).futureValue
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -172,34 +173,6 @@ class CassandraSequenceFactorySpec
       }
     }
 
-    "cassandraLoadBalancingPolicy DCAwareRoundRobinPolicy" in {
-
-      val wbaseConfig: Config = ConfigFactory
-        .parseString(s"""
-          |lerna.util.sequence {
-          |  cassandra.tenants.${tenant.id} = $${lerna.util.sequence.cassandra.default} {
-          |    local-datacenter = "datacenter1"
-          |  }
-          |}
-          |""".stripMargin).withFallback(ConfigFactory.defaultReferenceUnresolved()).resolve()
-
-      val cassandraConfig = new SequenceFactoryConfig(wbaseConfig).cassandraConfig
-      cassandraConfig.buildCassandraClusterConfig()
-    }
-
-    "cassandraLoadBalancingPolicy DCAwareRoundRobinPolicy datacenter指定なし" in {
-
-      val baseConfig: Config =
-        ConfigFactory
-          .parseString(s"""
-                       |lerna.util.sequence {
-                       |  cassandra.tenants.${tenant.id} = $${lerna.util.sequence.cassandra.default}
-                       |}
-                       |""".stripMargin).withFallback(ConfigFactory.defaultReferenceUnresolved()).resolve()
-
-      val cassandraConfig = new SequenceFactoryConfig(baseConfig).cassandraConfig
-      cassandraConfig.buildCassandraClusterConfig()
-    }
   }
 
 }

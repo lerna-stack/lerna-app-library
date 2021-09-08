@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Update `wiremock-jre8` to `2.30.1` from `2.27.2`
-- Update `cassandra-driver-core` to `3.11.0` from `3.7.1`
+- `lerna-util-sequence`
+    - Use [Alpakka Cassandra 2.0.2](https://doc.akka.io/docs/alpakka/2.0.2/cassandra.html)
+      instead of [DataStax Java Driver for Cassandra 3.7.1](https://docs.datastax.com/en/developer/java-driver/3.7/).  
+      This change includes the DataStax Java Driver upgrade to [4.6.1](https://docs.datastax.com/en/developer/java-driver/4.6/).  
+      We have to migrate code and settings. See [migration guide](doc/migration-guide.md#300-from-200).  
+      Note that the upgrade doesn't break already-persisted data since the Cassandra database schema to use is not changed.  
+      Though we have to migrate code and settings, we can continue to use already-persisted data.
 
 
 ## [v2.0.0] - 2021-07-16
