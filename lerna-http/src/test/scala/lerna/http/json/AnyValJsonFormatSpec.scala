@@ -37,10 +37,8 @@ class AnyValJsonFormatSpec extends LernaHttpRouteBaseSpec {
 
     "AnyVal から JSValue に、JSValue から AnyVal に相互に変換可能" in {
       Post("/", HttpEntity(`application/json`, """{ "ex": "01" }""")) ~> Route.seal(route) ~> check {
-        expect {
-          status === StatusCodes.OK
-          responseAs[ExampleObject] === ExampleObject(ExampleVal("01"))
-        }
+        expect(status === StatusCodes.OK)
+        expect(responseAs[ExampleObject] === ExampleObject(ExampleVal("01")))
       }
     }
 

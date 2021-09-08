@@ -7,7 +7,5 @@ import com.eed3si9n.expecty.Expecty
   * @see [[https://github.com/pniederw/expecty Expecty]]
   */
 trait PowerAssertionsSupport {
-  val expect: Expecty = new Expecty {
-    override val failEarly: Boolean = false
-  }
+  val expect: Expecty = new Expecty()
 }

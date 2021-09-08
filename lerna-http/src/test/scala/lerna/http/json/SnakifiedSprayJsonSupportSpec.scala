@@ -13,10 +13,8 @@ class SnakifiedSprayJsonSupportSpec extends LernaHttpBaseSpec with SnakifiedSpra
 
     val jsonObject = """{"test_string": "test2" }""".parseJson.convertTo[TestString]
 
-    expect {
-      jsonString.toString === """{"test_string":"test1"}"""
-      jsonObject.testString === "test2"
-    }
+    expect(jsonString.toString === """{"test_string":"test1"}""")
+    expect(jsonObject.testString === "test2")
 
   }
 
