@@ -201,6 +201,7 @@ private[sequence] final class SequenceFactoryWorker(
     prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext.next())
   }
 
+  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity"))
   private[this] def prepareNextSequence(
       sequenceContext: SequenceContext,
       nextSequence: SequenceContext,
@@ -209,7 +210,16 @@ private[sequence] final class SequenceFactoryWorker(
       reset()
       empty(nextSequence)
     } else if (nextSequence.isEmpty) {
-      empty(nextSequence)
+      val freeAmount = nextSequence.freeAmount
+      if (freeAmount > 0) {
+        reserve(sequenceContext = sequenceContext, amount = freeAmount)
+        empty(nextSequence)
+      } else {
+        val message =
+          s"freeAmount (${freeAmount.toString}) must be greater than 0 because freeAmount ≦ 0 means that the next sequence is overflow"
+        logger.error(new IllegalStateException(message), message)
+        Behaviors.stopped
+      }
     } else if (nextSequence.isStarving) {
       val freeAmount = nextSequence.freeAmount
       if (freeAmount > 0) {

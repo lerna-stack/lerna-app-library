@@ -475,6 +475,64 @@ class SequenceFactoryWorkerSpec
 
       testKit.stop(worker)
     }
+
+    "採番値が枯渇しているときに予約が失敗した場合は次の採番要求で再度予約が要求される" in {
+      val storeProbe        = createTestProbe[SequenceStore.Command]()
+      val firstValue        = 3
+      val incrementStep     = 10
+      val reservationAmount = 1 // 2以上なら問題ない
+      val worker = spawn(
+        SequenceFactoryWorker
+          .apply(
+            maxSequenceValue = 999,
+            firstValue = firstValue,
+            incrementStep = incrementStep,
+            reservationAmount = reservationAmount,
+            storeProbe.ref,
+            idleTimeout = 10.seconds,
+            sequenceSubId,
+          ),
+      )
+      // 初期化
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.InitialReserveSequence =>
+          result.replyTo ! SequenceStore.InitialSequenceReserved(
+            initialValue = firstValue,                                                // 3
+            maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1)),// 3
+          )
+      }
+
+      // 採番要求: reservationAmount が 1 なので、1回採番すると枯渇し、採番予約が行われる
+      {
+        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+        expect(replyToProbe.receiveMessage().value === BigInt(3)) // firstValue
+      }
+
+      // 予約を失敗させる
+      inside(storeProbe.receiveMessage()) {
+        case reserve: SequenceStore.ReserveSequence =>
+          reserve.replyTo ! SequenceStore.ReservationFailed
+      }
+
+      // 採番要求: 予約できていないのですぐに採番できないが、再度予約を行う
+      val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+      replyToProbe.expectNoMessage()
+
+      // 予約を成功させる
+      inside(storeProbe.receiveMessage()) {
+        case reserve: SequenceStore.ReserveSequence =>
+          reserve.replyTo ! SequenceStore.SequenceReserved(maxReservedValue =
+            reserve.maxReservedValue + (incrementStep * reserve.reservationAmount),
+          )
+      }
+
+      // 予約完了後に採番される
+      expect(replyToProbe.receiveMessage().value === BigInt(13))
+
+      testKit.stop(worker)
+    }
   }
 
 }
