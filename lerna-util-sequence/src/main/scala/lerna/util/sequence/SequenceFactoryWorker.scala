@@ -254,9 +254,15 @@ private[sequence] final class SequenceFactoryWorker(
   ): Behavior[Command] = {
     val nextSequence = sequenceContext.copy(maxReservedValue = msg.maxReservedValue)
     if (nextSequence.isOverflow) {
-      empty(nextSequence)
+      val message =
+        s"Worker should reserve sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
+      logger.error(new IllegalStateException(message), message)
+      Behaviors.stopped
     } else if (nextSequence.isEmpty) {
-      empty(nextSequence)
+      val message =
+        s"Sequence normally never dries up after reserving [${sequenceContext.toString}, ${msg.toString}]"
+      logger.error(new IllegalStateException(message), message)
+      Behaviors.stopped
     } else {
       ready(nextSequence)
     }
