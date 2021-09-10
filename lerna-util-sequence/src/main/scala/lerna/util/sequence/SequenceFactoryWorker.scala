@@ -78,7 +78,7 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
         // 予約数制限（reservationAmount）の中で採番可能なシーケンスの数
         (config.reservationAmount - remainAmount).toInt,
         // 最大シーケンス番号（maxSequenceValue）までの間で採番可能なシーケンスの数
-        ((config.maxSequenceValue - nextValue) / config.incrementStep).toInt,
+        ((config.maxSequenceValue - maxReservedValue) / config.incrementStep).toInt,
       )
 
     /** 発行できるシーケンスの最大値を超えている */

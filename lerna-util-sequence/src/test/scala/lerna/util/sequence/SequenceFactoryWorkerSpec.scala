@@ -450,8 +450,6 @@ class SequenceFactoryWorkerSpec
         replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue, sequenceSubId))
       }
 
-      storeProbe.receiveMessage() shouldBe a[SequenceStore.ReserveSequence]
-
       // 採番できる 2
       {
         val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
@@ -530,6 +528,59 @@ class SequenceFactoryWorkerSpec
 
       // 予約完了後に採番される
       expect(replyToProbe.receiveMessage().value === BigInt(13))
+
+      testKit.stop(worker)
+    }
+
+    "採番値上限を超えた値の予約は行われない" in {
+      val storeProbe        = createTestProbe[SequenceStore.Command]()
+      val firstValue        = 5
+      val incrementStep     = 10
+      val maxSequenceValue  = 15 // 1 回の採番で枯渇する値
+      val reservationAmount = 2
+      val worker = spawn(
+        SequenceFactoryWorker
+          .apply(
+            maxSequenceValue = maxSequenceValue,
+            firstValue = firstValue,
+            incrementStep = incrementStep,
+            reservationAmount = reservationAmount,
+            storeProbe.ref,
+            idleTimeout = 10.seconds,
+            sequenceSubId,
+          ),
+      )
+
+      // 初期化
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.InitialReserveSequence =>
+          val maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1))
+          expect(maxReservedValue === 15)
+          result.replyTo ! SequenceStore.InitialSequenceReserved(
+            initialValue = firstValue,
+            maxReservedValue = BigInt(maxReservedValue),
+          )
+      }
+      // { 5, 15 } が予約済みで、残り { 5, 15 } が採番可能
+
+      // 採番
+      {
+        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+        replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue, sequenceSubId))
+      }
+      // { 15 } が予約済みで、残り { 15 } が採番可能
+      // 採番できる値が少なくなったので通常であれば予約するが、maxSequenceValue を超えないよう予約を控える
+      storeProbe.expectNoMessage()
+
+      // 採番
+      {
+        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+        replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(firstValue + incrementStep, sequenceSubId))
+      }
+      // 採番できる値がないのでリセット
+      storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
 
       testKit.stop(worker)
     }
