@@ -1,4 +1,4 @@
-# lerna-app-library
+# lerna-app-library-test
 
 A library that is useful for building applications that run on Lerna Stack.
 
