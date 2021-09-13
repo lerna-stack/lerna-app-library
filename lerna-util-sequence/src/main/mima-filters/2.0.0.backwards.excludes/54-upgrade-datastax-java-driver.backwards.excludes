@@ -1,0 +1,29 @@
+#
+# Breaks the backward compatibility
+#
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.FutureConverters")
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.FutureConverters$")
+
+
+#
+# Package private classes: The following changes don't break the backward compatibility
+#
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.FixedRetryPolicy")
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.FutureConverters$ListenableFutureConverter")
+ProblemFilters.exclude[MissingClassProblem]("lerna.util.sequence.FutureConverters$ListenableFutureConverter$")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.session")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.selectSequenceReservationStatement")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.insertSequenceReservationStatement")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.copy")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.copy$default$1")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.copy$default$2")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.copy$default$3")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.apply")
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#SessionContext.unapply")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionContext.this")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionOpened.session")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionOpened.copy")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#SessionOpened.copy$default$1")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionOpened.this")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#SessionOpened.apply")
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#SessionOpened.unapply")

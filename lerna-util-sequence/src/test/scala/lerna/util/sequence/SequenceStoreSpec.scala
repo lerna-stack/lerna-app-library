@@ -1,11 +1,11 @@
 package lerna.util.sequence
 
-import java.util.UUID
-
 import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
+
+import java.util.UUID
 
 object SequenceStoreSpec {
   private implicit val tenant: Tenant = new Tenant {
@@ -31,7 +31,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
 
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(system.settings.config).cassandraConfig
 
-  private[this] lazy val session = cassandraConfig.buildCassandraClusterConfig().connect()
+  private lazy val session =
+    CqlSessionProvider.connect(system, cassandraConfig).futureValue
 
   override def beforeAll(): Unit = {
     super.beforeAll()
