@@ -136,7 +136,7 @@ class SequenceFactoryWorkerSpec
           expect(result.sequenceSubId === sequenceSubId)
           result.replyTo ! SequenceStore.InitialSequenceReserved(
             initialValue = 3,     // firstValue
-            maxReservedValue = 13,// firstValue + (incrementStep * reservationAmount)
+            maxReservedValue = 13,// firstValue + (incrementStep * (reservationAmount - 1))
           )
       }
 
