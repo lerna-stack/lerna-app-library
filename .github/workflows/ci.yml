@@ -2,11 +2,9 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, feature/** ]
   pull_request:
-    branches:
-      - main
+    branches: [ main, feature/** ]
 
 env:
   SBT_SCALAC_STRICT_WARNINGS: true
