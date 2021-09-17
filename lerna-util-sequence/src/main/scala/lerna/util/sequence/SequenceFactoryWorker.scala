@@ -252,19 +252,31 @@ private[sequence] final class SequenceFactoryWorker(
       msg: SequenceStore.SequenceReserved,
       sequenceContext: SequenceContext,
   ): Behavior[Command] = {
-    val nextSequence = sequenceContext.copy(maxReservedValue = msg.maxReservedValue)
-    if (nextSequence.isOverflow) {
-      val message =
-        s"Worker should reserve sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
-      logger.error(new IllegalStateException(message), message)
-      Behaviors.stopped
-    } else if (nextSequence.isEmpty) {
-      val message =
-        s"Sequence normally never dries up after reserving [${sequenceContext.toString}, ${msg.toString}]"
-      logger.error(new IllegalStateException(message), message)
-      Behaviors.stopped
+    if (msg.maxReservedValue > sequenceContext.maxReservedValue) {
+      val nextSequence = sequenceContext.copy(maxReservedValue = msg.maxReservedValue)
+      if (nextSequence.isOverflow) {
+        val message =
+          s"Worker should reserve sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
+        logger.error(new IllegalStateException(message), message)
+        Behaviors.stopped
+      } else if (nextSequence.isEmpty) {
+        val message =
+          s"Sequence normally never dries up after reserving [${sequenceContext.toString}, ${msg.toString}]"
+        logger.error(new IllegalStateException(message), message)
+        Behaviors.stopped
+      } else {
+        ready(nextSequence)
+      }
+    } else if (msg.maxReservedValue === sequenceContext.maxReservedValue) {
+      // 採番予約のリトライにより同じ結果が返ってきた場合
+      Behaviors.same
     } else {
-      ready(nextSequence)
+      // SequenceStore が予約要求した順とはことなる順番で結果を返した場合に到達する可能性があるが、
+      // 現在の SequenceStore の実装では結果の順序が前後することがないので、到達しないはずのコード。
+      val message =
+        s"Ignore the maxReservedValue since it reverts to the old value [${sequenceContext.toString}, ${msg.toString}]"
+      logger.warn(new IllegalStateException(message), message)
+      Behaviors.same
     }
   }
 
