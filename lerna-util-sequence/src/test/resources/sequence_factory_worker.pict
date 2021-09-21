@@ -19,11 +19,6 @@ nextValue: > maxReservedValue, = maxReservedValue, < maxReservedValue
 #
 remainAmount: = reservationAmount, < reservationAmount
 
-# 発行できるシーケンスが少なくなっているかどうか
-# reservationFactor を抽象化する
-#
-isStarving: TRUE, FALSE
-
 # [採番後] 次に採番予定の値
 after_nextValue: <nextValue>
 
@@ -33,7 +28,7 @@ after_remainAmount: <remainAmount>
 # [採番後] 発行できるシーケンスが少なくなっているかどうか
 # reservationFactor を抽象化する
 #
-after_isStarving: <isStarving>
+after_isStarving: TRUE, FALSE
 
 ##################################################
 # 結果
@@ -70,17 +65,6 @@ after_isStarving: <isStarving>
 ##################################################
 # 条件の制約
 ##################################################
-
-# isStarving
-
-# remainAmount = 0 の場合 isStarving は常に TRUE になる
-# maxReservedValue < nextValue, maxReservedValue = nextValue の場合に remainAmount = 0 となる
-#
-IF [nextValue] = "> maxReservedValue" OR [nextValue] = "= maxReservedValue"
-THEN [isStarving] = "TRUE";
-
-IF [@isEmpty] = "TRUE"
-THEN [isStarving] = "TRUE";
 
 # after_isStarving
 
