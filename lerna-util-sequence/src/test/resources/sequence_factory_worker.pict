@@ -34,11 +34,6 @@ after_isStarving: TRUE, FALSE
 # 結果
 ##################################################
 
-# 追加で予約可能なシーケンスの数
-# - freeAmount < 0 は仕様上ありえない
-#
-@freeAmount: > 0, = 0
-
 # 発行できるシーケンスの最大値を超えている
 @isOverflow: TRUE, FALSE
 
@@ -50,7 +45,7 @@ after_isStarving: TRUE, FALSE
 # [採番後] 追加で予約可能なシーケンスの数
 # - freeAmount < 0 は仕様上ありえない
 #
-@after_freeAmount: <@freeAmount>
+@after_freeAmount: > 0, = 0
 
 # [採番後] 発行できるシーケンスの最大値を超えている
 @after_isOverflow: <@isOverflow>
@@ -86,17 +81,6 @@ THEN [after_nextValue] = [nextValue];
 # 結果の条件
 ##################################################
 
-# @freeAmount
-
-IF [maxReservedValue] = "= maxSequenceValue"
-THEN [@freeAmount] = "= 0";
-
-IF [maxReservedValue] = "< maxSequenceValue" AND [remainAmount] = "= reservationAmount"
-THEN [@freeAmount] = "= 0";
-
-IF [maxReservedValue] = "< maxSequenceValue" AND [remainAmount] = "< reservationAmount"
-THEN [@freeAmount] = "> 0";
-
 # @isOverflow
 
 IF [maxReservedValue] = "= maxSequenceValue" AND [nextValue] = "> maxReservedValue"
@@ -125,13 +109,10 @@ ELSE [@採番] = "する";
 
 # @after_freeAmount
 
-IF [@採番] = "しない"
-THEN [@after_freeAmount] = [@freeAmount];
-
-IF [@採番] = "する" AND [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "= reservationAmount"
+IF [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "= reservationAmount"
 THEN [@after_freeAmount] = "= 0";
 
-IF [@採番] = "する" AND [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "< reservationAmount"
+IF [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "< reservationAmount"
 THEN [@after_freeAmount] = "> 0";
 
 IF [maxReservedValue] = "= maxSequenceValue"
