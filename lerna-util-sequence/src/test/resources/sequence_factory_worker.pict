@@ -163,7 +163,7 @@ ELSE [@採番値リセット] = "しない";
 
 
 # ❯ cat sequence_factory_worker.pict | docker run --rm -i ghcr.io/iceomix/pict -o:13 | tee pict.txt
-# ❯ cat <(head -n1 pict.txt) <(sort -t $'\t' <(sed '1d' pict.txt)) | awk -v FS='\t' -v OFS='\t' '{ if (NR == 1) { print "No", $0 } else { print NR - 1, $0 } }' | column --table -s $'\t' | sed -E 's/^/# /'
+# ❯ cat <(head -n1 pict.txt) <(sort -t $'\t' <(sed '1d' pict.txt)) | awk -v FS='\t' -v OFS='\t' '{ print (NR == 1) ? "No" : NR - 1, $0 }' | column --table -s $'\t' | sed -E 's/^/# /'
 #
 # -o: オプションで条件数と同じ数を指定することで全網羅パターンを出力できる。（デフォルトではペアワイズ法によりケースが絞られる）
 # 参考：
