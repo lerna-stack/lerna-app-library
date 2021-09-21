@@ -63,7 +63,7 @@ after_isStarving: <isStarving>
 # [採番後] 発行できるシーケンスがない
 @after_isEmpty: <@isEmpty>
 
-@採番値予約: する, しない,
+@採番値予約: する, しない
 
 @採番値リセット: する, しない
 
