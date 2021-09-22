@@ -69,6 +69,10 @@ THEN [after_isStarving] = "TRUE";
 IF [@after_isEmpty] = "TRUE"
 THEN [after_isStarving] = "TRUE";
 
+# 予約可能枠いっぱいまで予約できている場合は、枯渇していると判断されない
+IF [after_remainAmount] = "= reservationAmount"
+THEN [after_isStarving] = "FALSE";
+
 # after_nextValue
 
 IF [@採番] = "しない"
@@ -180,23 +184,15 @@ ELSE [@採番値リセット] = "しない";
 # 1   < maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  FALSE             FALSE        FALSE     する    > 0                FALSE              FALSE           しない       しない
 # 2   < maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
 # 3   < maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 4   < maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 5   < maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
-# 6   < maxSequenceValue  < maxReservedValue  = maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 7   < maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              TRUE            する         しない
-# 8   < maxSequenceValue  = maxReservedValue  > maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              TRUE            しない       しない
-# 9   < maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        TRUE      しない  > 0                FALSE              FALSE           する         しない
-# 10  < maxSequenceValue  > maxReservedValue  > maxReservedValue  = reservationAmount  TRUE              FALSE        TRUE      しない  = 0                FALSE              FALSE           しない       しない
-# 11  = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 12  = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 13  = maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 14  = maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 15  = maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 16  = maxSequenceValue  < maxReservedValue  = maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 17  = maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                TRUE               TRUE            しない       する
-# 18  = maxSequenceValue  = maxReservedValue  > maxReservedValue  = reservationAmount  TRUE              FALSE        FALSE     する    = 0                TRUE               TRUE            しない       する
-# 19  = maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              TRUE         TRUE      しない  = 0                TRUE               FALSE           しない       しない
-# 20  = maxSequenceValue  > maxReservedValue  > maxReservedValue  = reservationAmount  TRUE              TRUE         TRUE      しない  = 0                TRUE               FALSE           しない       しない
+# 4   < maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
+# 5   < maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              TRUE            する         しない
+# 6   < maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        TRUE      しない  > 0                FALSE              FALSE           する         しない
+# 7   = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 8   = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 9   = maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 10  = maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 11  = maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                TRUE               TRUE            しない       する
+# 12  = maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              TRUE         TRUE      しない  = 0                TRUE               FALSE           しない       しない
 #
 # プレフィックス "@" が付いてない条件の組み合わせに重複がある場合、「結果の条件」の定義に漏れがあることがわかる。
 #
