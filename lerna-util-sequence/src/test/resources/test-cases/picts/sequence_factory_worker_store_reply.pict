@@ -1,0 +1,214 @@
+#
+# SequenceFactoryWorker が SequenceStore からの応答を受け取ったときにどのように振る舞うかケースを洗い出します
+# 書き方: https://github.com/Microsoft/pict/blob/main/doc/pict.md
+#
+##################################################
+# 条件
+##################################################
+
+# 返信を受け取る前の isStarving
+isStarving: TRUE, FALSE
+
+# 返信を受け取る前の isEmpty
+isEmpty: TRUE, FALSE
+
+# 返信を受け取る前の isOverflow
+isOverflow: TRUE, FALSE
+
+# 受け取った返信
+msg: SequenceReserved, ReservationFailed, SequenceReset
+
+# 受け取った返信の maxReservedValue
+# ReservationFailed には maxReservedValue がないので NaN を使う
+msg.maxReservedValue: > ctx.maxReservedValue, = ctx.maxReservedValue, < ctx.maxReservedValue, NaN
+
+# 返信を受け取り、採番した後の isStarving
+generated.isStarving: <isStarving>
+
+# 返信を受け取り、採番した後の isOverflow
+generated.isOverflow: <isOverflow>
+
+##################################################
+# 結果
+##################################################
+
+# 返信を受け取った後の SequenceContext の状態
+
+@received.isEmpty: <isEmpty>
+
+# 返信の直後に GenerateSequence を受け取ったときの振る舞い
+
+@採番: する, しない
+
+@採番値予約: する, しない
+
+@採番値リセット: する, しない
+
+##################################################
+# 条件の制約
+##################################################
+
+# msg.maxReservedValue
+
+# msg.maxReservedValue = NaN は ReservationFailed のときだけ
+IF [msg] = "ReservationFailed"
+THEN [msg.maxReservedValue] = "NaN"
+ELSE [msg.maxReservedValue] <> "NaN";
+
+# SequenceStore のコマンドに対する応答順序が前後することはないため、
+# msg.maxReservedValue < ctx.maxReservedValue となるメッセージが届くことはない
+IF [msg] = "SequenceReserved"
+THEN [msg.maxReservedValue] <> "< ctx.maxReservedValue";
+
+# 採番値リセットで ctx.maxReservedValue よりも大きい maxReservedValue が予約されることはない
+IF [msg] = "SequenceReset"
+THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
+
+# オーバフローしているときに、それよりも大きい採番値が予約されることはない
+IF [isOverflow] = "TRUE"
+THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
+
+# isStarving
+
+# 採番値が枯渇しているということは、採番値が不足しているのと同義
+IF [isEmpty] = "TRUE"
+THEN [isStarving] = "TRUE";
+
+# isEmpty
+
+# オーバフローしているということは採番値がないことと同義
+IF [isOverflow] = "TRUE"
+THEN [isEmpty] = "TRUE";
+
+# isOverflow
+
+
+# generated.isStarving
+
+# SequenceStore からの応答を受け取っても枯渇しているなら、採番後も不足している
+IF [@received.isEmpty] = "TRUE"
+THEN [generated.isStarving] = "TRUE";
+
+# オーバーフローすることは採番値が不足しているのと同義
+IF [generated.isOverflow] = "TRUE"
+THEN [generated.isStarving] = "TRUE";
+
+# 採番せずに採番値が減ることはない
+IF [@採番] = "しない" AND [isStarving] = "FALSE"
+THEN [generated.isStarving] = "FALSE";
+
+# 予約ができていない場合に採番値の不足が解消することはない
+IF [isStarving] = "TRUE" AND [msg.maxReservedValue] <> "> ctx.maxReservedValue"
+THEN [generated.isStarving] = "TRUE";
+
+# generated.isOverflow
+
+# リセット成功
+IF [isOverflow] = "TRUE" AND ([msg] = "SequenceReset" AND [msg.maxReservedValue] = "< ctx.maxReservedValue")
+THEN [generated.isOverflow] = "FALSE";
+
+# リセット未成功
+IF [isOverflow] = "TRUE" AND ([msg] <> "SequenceReset" OR [msg.maxReservedValue] <> "< ctx.maxReservedValue")
+THEN [generated.isOverflow] = "TRUE";
+
+# 採番せずに採番値が減ることはない
+IF [@採番] = "しない" AND [isOverflow] = "FALSE"
+THEN [generated.isOverflow] = "FALSE";
+
+##################################################
+# 結果の条件
+##################################################
+
+# @received.isEmpty
+
+# 予約成功
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND ([msg] = "SequenceReserved" AND [msg.maxReservedValue] = "> ctx.maxReservedValue")
+THEN [@received.isEmpty] = "FALSE";
+
+# 予約未成功
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND ([msg] <> "SequenceReserved" OR [msg.maxReservedValue] <> "> ctx.maxReservedValue")
+THEN [@received.isEmpty] = "TRUE";
+
+# リセット成功
+IF [isOverflow] = "TRUE" AND ([msg] = "SequenceReset" AND [msg.maxReservedValue] = "< ctx.maxReservedValue")
+THEN [@received.isEmpty] = "FALSE";
+
+# リセット未成功
+IF [isOverflow] = "TRUE" AND ([msg] <> "SequenceReset" OR [msg.maxReservedValue] <> "< ctx.maxReservedValue")
+THEN [@received.isEmpty] = "TRUE";
+
+# 採番せずに枯渇することはない
+IF [isEmpty] = "FALSE"
+THEN [@received.isEmpty] = "FALSE";
+
+# 採番せずに採番値が減ることはない
+IF [@採番] = "しない" AND [isEmpty] = "FALSE"
+THEN [@received.isEmpty] = "FALSE";
+
+# @採番
+
+# 採番値が枯渇していないときだけ採番する
+IF [@received.isEmpty] = "TRUE"
+THEN [@採番] = "しない"
+ELSE [@採番] = "する";
+
+# @採番値予約
+
+# オーバフローしておらず、採番値が不足しているときに予約する
+IF [generated.isOverflow] = "FALSE" AND ([generated.isStarving] = "TRUE" OR [@received.isEmpty] = "TRUE")
+THEN [@採番値予約] = "する";
+
+# オーバフローしていたり、採番値が不足してない場合には予約しない
+IF [generated.isOverflow] = "TRUE" OR ([generated.isStarving] = "FALSE" AND [@received.isEmpty] = "FALSE")
+THEN [@採番値予約] = "しない";
+
+# @採番値リセット
+
+# オーバフローしているときだけリセットする
+IF [generated.isOverflow] = "TRUE"
+THEN [@採番値リセット] = "する"
+ELSE [@採番値リセット] = "しない";
+
+##################### OUTPUT #####################
+# 全組み合わせ網羅ケース:
+# No  isStarving  isEmpty  isOverflow  msg                msg.maxReservedValue    generated.isStarving  generated.isOverflow  @received.isEmpty  @採番   @採番値予約  @採番値リセット
+# 1   FALSE       FALSE    FALSE       ReservationFailed  NaN                     FALSE                 FALSE                 FALSE              する    しない       しない
+# 2   FALSE       FALSE    FALSE       ReservationFailed  NaN                     TRUE                  FALSE                 FALSE              する    する         しない
+# 3   FALSE       FALSE    FALSE       ReservationFailed  NaN                     TRUE                  TRUE                  FALSE              する    しない       する
+# 4   FALSE       FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 5   FALSE       FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 6   FALSE       FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 7   FALSE       FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 8   FALSE       FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 9   FALSE       FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 10  FALSE       FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 11  FALSE       FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 12  FALSE       FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 13  FALSE       FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 14  FALSE       FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 15  FALSE       FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 16  TRUE        FALSE    FALSE       ReservationFailed  NaN                     TRUE                  FALSE                 FALSE              する    する         しない
+# 17  TRUE        FALSE    FALSE       ReservationFailed  NaN                     TRUE                  TRUE                  FALSE              する    しない       する
+# 18  TRUE        FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 19  TRUE        FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 20  TRUE        FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 21  TRUE        FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 22  TRUE        FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 23  TRUE        FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 24  TRUE        FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 25  TRUE        FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 26  TRUE        FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 27  TRUE        TRUE     FALSE       ReservationFailed  NaN                     TRUE                  FALSE                 TRUE               しない  する         しない
+# 28  TRUE        TRUE     FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE                  FALSE                 TRUE               しない  する         しない
+# 29  TRUE        TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE                 FALSE                 FALSE              する    しない       しない
+# 30  TRUE        TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 31  TRUE        TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  TRUE                  TRUE                  FALSE              する    しない       する
+# 32  TRUE        TRUE     FALSE       SequenceReset      < ctx.maxReservedValue  TRUE                  FALSE                 TRUE               しない  する         しない
+# 33  TRUE        TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE                  FALSE                 TRUE               しない  する         しない
+# 34  TRUE        TRUE     TRUE        ReservationFailed  NaN                     TRUE                  TRUE                  TRUE               しない  しない       する
+# 35  TRUE        TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE                  TRUE                  TRUE               しない  しない       する
+# 36  TRUE        TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  TRUE                  FALSE                 FALSE              する    する         しない
+# 37  TRUE        TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  TRUE                  TRUE                  TRUE               しない  しない       する
+#
+# 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
+# 重複ID  No  isStarving  isEmpty  isOverflow  msg  msg.maxReservedValue  generated.isStarving  generated.isOverflow  @received.isEmpty  @採番  @採番値予約  @採番値リセット
