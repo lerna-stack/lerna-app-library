@@ -165,15 +165,8 @@ IF [@after_isOverflow] = "TRUE" AND [@after_isEmpty] = "TRUE"
 THEN [@採番値リセット] = "する"
 ELSE [@採番値リセット] = "しない";
 
-
-# ❯ cat sequence_factory_worker.pict | docker run --rm -i ghcr.io/iceomix/pict -o:12 | tee pict.txt
-# ❯ cat <(head -n1 pict.txt) <(sort -t $'\t' <(sed '1d' pict.txt)) | awk -v FS='\t' -v OFS='\t' '{ print (NR == 1) ? "No" : NR - 1, $0 }' | column --table -s $'\t' | sed -E 's/^/# /'
-#
-# -o: オプションで条件数と同じ数を指定することで全網羅パターンを出力できる。（デフォルトではペアワイズ法によりケースが絞られる）
-# 参考：
-# ペアワイズ法によるテストケース抽出ツール「PICT」を使ってテストケースを85%削減する - Qiita
-# https://qiita.com/bremen/items/6eceddc534d87fc797cc
-#
+##################### OUTPUT #####################
+# 全組み合わせ網羅ケース:
 # No  maxReservedValue    nextValue           after_nextValue     after_isStarving  after_freeAmount  @isOverflow  @isEmpty  @採番   @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
 # 1   < maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             = 0               FALSE        FALSE     する    FALSE              FALSE           しない       しない
 # 2   < maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             > 0               FALSE        FALSE     する    FALSE              FALSE           しない       しない
@@ -187,8 +180,5 @@ ELSE [@採番値リセット] = "しない";
 # 10  = maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              = 0               FALSE        FALSE     する    TRUE               TRUE            しない       する
 # 11  = maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              = 0               TRUE         TRUE      しない  TRUE               TRUE            しない       する
 #
-# プレフィックス "@" が付いてない条件の組み合わせに重複がある場合、「結果の条件」の定義に漏れがあることがわかる。
-#
-# ❯ cat pict.txt | cut -f 1,2,3,4,5 | sort | uniq --repeated | wc -l
-# 0
-#
+# 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
+# 重複ID  No  maxReservedValue  nextValue  after_nextValue  after_isStarving  after_freeAmount  @isOverflow  @isEmpty  @採番  @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
