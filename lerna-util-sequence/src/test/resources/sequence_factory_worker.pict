@@ -17,11 +17,6 @@ nextValue: > maxReservedValue, = maxReservedValue, < maxReservedValue
 # [採番後] 次に採番予定の値
 after_nextValue: <nextValue>
 
-# [採番後] 採番可能なシーケンスの数
-# - after_remainAmount > reservationAmount は仕様上ありえない
-#
-after_remainAmount: = reservationAmount, < reservationAmount
-
 # [採番後] 発行できるシーケンスが少なくなっているかどうか
 # reservationFactor を抽象化する
 #
@@ -69,10 +64,6 @@ THEN [after_isStarving] = "TRUE";
 IF [@after_isEmpty] = "TRUE"
 THEN [after_isStarving] = "TRUE";
 
-# 予約可能枠いっぱいまで予約できている場合は、枯渇していると判断されない
-IF [after_remainAmount] = "= reservationAmount"
-THEN [after_isStarving] = "FALSE";
-
 # after_nextValue
 
 IF [@採番] = "しない"
@@ -116,11 +107,8 @@ ELSE [@採番] = "する";
 
 # @after_freeAmount
 
-IF [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "= reservationAmount"
-THEN [@after_freeAmount] = "= 0";
-
-IF [maxReservedValue] = "< maxSequenceValue" AND [after_remainAmount] = "< reservationAmount"
-THEN [@after_freeAmount] = "> 0";
+IF [maxReservedValue] = "< maxSequenceValue"
+THEN [@after_freeAmount] = "= 0" OR [@after_freeAmount] = "> 0";
 
 IF [maxReservedValue] = "= maxSequenceValue"
 THEN [@after_freeAmount] = "= 0";
@@ -172,7 +160,7 @@ THEN [@採番値リセット] = "する"
 ELSE [@採番値リセット] = "しない";
 
 
-# ❯ cat sequence_factory_worker.pict | docker run --rm -i ghcr.io/iceomix/pict -o:13 | tee pict.txt
+# ❯ cat sequence_factory_worker.pict | docker run --rm -i ghcr.io/iceomix/pict -o:12 | tee pict.txt
 # ❯ cat <(head -n1 pict.txt) <(sort -t $'\t' <(sed '1d' pict.txt)) | awk -v FS='\t' -v OFS='\t' '{ print (NR == 1) ? "No" : NR - 1, $0 }' | column --table -s $'\t' | sed -E 's/^/# /'
 #
 # -o: オプションで条件数と同じ数を指定することで全網羅パターンを出力できる。（デフォルトではペアワイズ法によりケースが絞られる）
@@ -180,19 +168,22 @@ ELSE [@採番値リセット] = "しない";
 # ペアワイズ法によるテストケース抽出ツール「PICT」を使ってテストケースを85%削減する - Qiita
 # https://qiita.com/bremen/items/6eceddc534d87fc797cc
 #
-# No  maxReservedValue    nextValue           after_nextValue     after_remainAmount   after_isStarving  @isOverflow  @isEmpty  @採番   @after_freeAmount  @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
-# 1   < maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  FALSE             FALSE        FALSE     する    > 0                FALSE              FALSE           しない       しない
-# 2   < maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
-# 3   < maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 4   < maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
-# 5   < maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    > 0                FALSE              TRUE            する         しない
-# 6   < maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        TRUE      しない  > 0                FALSE              TRUE            する         しない
-# 7   = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 8   = maxSequenceValue  < maxReservedValue  < maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 9   = maxSequenceValue  < maxReservedValue  < maxReservedValue  = reservationAmount  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 10  = maxSequenceValue  < maxReservedValue  = maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
-# 11  = maxSequenceValue  = maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              FALSE        FALSE     する    = 0                TRUE               TRUE            しない       する
-# 12  = maxSequenceValue  > maxReservedValue  > maxReservedValue  < reservationAmount  TRUE              TRUE         TRUE      しない  = 0                TRUE               TRUE            しない       する
+# No  maxReservedValue    nextValue           after_nextValue     after_isStarving  @isOverflow  @isEmpty  @採番   @after_freeAmount  @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+# 1   < maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 2   < maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    > 0                FALSE              FALSE           しない       しない
+# 3   < maxSequenceValue  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 4   < maxSequenceValue  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
+# 5   < maxSequenceValue  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 6   < maxSequenceValue  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    > 0                FALSE              FALSE           する         しない
+# 7   < maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    = 0                FALSE              TRUE            しない       しない
+# 8   < maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    > 0                FALSE              TRUE            する         しない
+# 9   < maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  = 0                FALSE              TRUE            しない       しない
+# 10  < maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  > 0                FALSE              TRUE            する         しない
+# 11  = maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 12  = maxSequenceValue  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 13  = maxSequenceValue  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    = 0                FALSE              FALSE           しない       しない
+# 14  = maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    = 0                TRUE               TRUE            しない       する
+# 15  = maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              TRUE         TRUE      しない  = 0                TRUE               TRUE            しない       する
 #
 # プレフィックス "@" が付いてない条件の組み合わせに重複がある場合、「結果の条件」の定義に漏れがあることがわかる。
 #
