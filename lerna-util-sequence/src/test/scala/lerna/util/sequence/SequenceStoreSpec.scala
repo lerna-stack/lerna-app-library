@@ -147,6 +147,35 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
+    "リセット時は reservationAmount で指定した分だけの採番値が予約される" in {
+      val store = spawn(
+        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
+      )
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      store ! SequenceStore.ResetReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // reservationAmount = ((maxReservedValue - firstValue) / incrementStep) + 1
+      // 101 = ((301 - 1) / 3) + 1
+      testProbe.expectMessage(SequenceStore.SequenceReset(maxReservedValue = 301))
+
+      testKit.stop(store)
+    }
+
     "再起動したときに保存した予約値が復元できる" in {
       val sequenceId    = generateUniqueId()
       val nodeId        = 1
