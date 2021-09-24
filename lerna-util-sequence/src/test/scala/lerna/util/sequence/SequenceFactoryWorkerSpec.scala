@@ -97,10 +97,10 @@ class SequenceFactoryWorkerSpec
       inside(storeProbe.receiveMessage()) {
         case result: SequenceStore.ReserveSequence =>
           expect(result.maxReservedValue === BigInt(13))
-          expect(result.reservationAmount === 1)
+          expect(result.reservationAmount === 1) // 設定された reservationAmount - 消費済みの採番数
           expect(result.sequenceSubId === sequenceSubId)
           result.replyTo ! SequenceStore.SequenceReserved(
-            maxReservedValue = BigInt(23), // maxReservedValue + (incrementStep * (reservationAmount - 消費済みの採番数))
+            maxReservedValue = BigInt(23), // maxReservedValue + (incrementStep * reservationAmount)
           )
       }
 
@@ -478,7 +478,7 @@ class SequenceFactoryWorkerSpec
       val storeProbe        = createTestProbe[SequenceStore.Command]()
       val firstValue        = 3
       val incrementStep     = 10
-      val reservationAmount = 1 // 2以上なら問題ない
+      val reservationAmount = 1
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
