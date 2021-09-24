@@ -401,7 +401,7 @@ private[sequence] final class SequenceStore(
       reservationAmount: BigInt,
       sequenceSubId: Option[String],
   )(implicit sessionContext: SessionContext): Future[SequenceReset] = {
-    reserve(maxReservedValue = firstValue, reservationAmount, sequenceSubId)
+    reserve(maxReservedValue = firstValue, reservationAmount - 1, sequenceSubId)
       .map(r => SequenceReset(r.maxReservedValue))
   }
 
