@@ -453,6 +453,8 @@ class SequenceFactoryWorkerSpec
         case reserve: SequenceStore.ReserveSequence =>
           reserve.replyTo ! SequenceStore.ReservationFailed
       }
+      // 次の採番要求まで予約は行われない
+      storeProbe.expectNoMessage()
 
       // 採番要求: 予約できていないのですぐに採番できないが、再度予約を行う
       val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
