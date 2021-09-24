@@ -302,8 +302,25 @@ private[sequence] final class SequenceFactoryWorker(
       msg: SequenceStore.SequenceReset,
       sequenceContext: SequenceContext,
   ): Behavior[Command] = {
-    logger.warn("reset sequence: {}", msg.maxReservedValue)
-    val nextSequence = SequenceContext(msg.maxReservedValue, nextValue = firstValue)
-    prepareNextSequence(sequenceContext, nextSequence)
+    if (sequenceContext.isOverflow) {
+      logger.warn("reset sequence: {}", msg.maxReservedValue)
+      val nextSequence = SequenceContext(msg.maxReservedValue, nextValue = firstValue)
+      if (nextSequence.isOverflow) {
+        val message =
+          s"Worker should reset sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
+        logger.error(new IllegalStateException(message), message)
+        Behaviors.stopped
+      } else if (nextSequence.isEmpty) {
+        val message =
+          s"Sequence normally never dries up after resetting [${sequenceContext.toString}, ${msg.toString}]"
+        logger.error(new IllegalStateException(message), message)
+        Behaviors.stopped
+      } else {
+        ready(nextSequence)
+      }
+    } else {
+      // リセットのリトライによる応答が遅れて返ってきた場合
+      Behaviors.same
+    }
   }
 }
