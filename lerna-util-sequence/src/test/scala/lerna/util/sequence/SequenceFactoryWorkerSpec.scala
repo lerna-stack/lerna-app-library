@@ -141,7 +141,7 @@ class SequenceFactoryWorkerSpec
 
           val maxReservedValue = firstValue
           result.replyTo ! SequenceStore.SequenceReset(
-            maxReservedValue = maxReservedValue + (incrementStep * reservationAmount),
+            maxReservedValue = maxReservedValue + (incrementStep * (reservationAmount - 1)),
           )
       }
 
