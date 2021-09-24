@@ -125,11 +125,14 @@ ELSE [@after_isEmpty] = "FALSE";
 IF [@after_isOverflow] = "TRUE"
 THEN [@採番値予約] = "しない";
 
-IF [@after_isOverflow] = "FALSE" AND [after_isStarving] = "TRUE"
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "< maxSequenceValue" AND [after_isStarving] = "TRUE"
 THEN [@採番値予約] = "する";
 
-IF [@after_isOverflow] = "FALSE" AND [@after_isEmpty] = "TRUE"
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "< maxSequenceValue" AND [@after_isEmpty] = "TRUE"
 THEN [@採番値予約] = "する";
+
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "= maxSequenceValue"
+THEN [@採番値予約] = "しない";
 
 IF [@after_isOverflow] = "FALSE" AND [after_isStarving] = "FALSE" AND [@after_isEmpty] = "FALSE"
 THEN [@採番値予約] = "しない";
@@ -152,8 +155,8 @@ ELSE [@採番値リセット] = "しない";
 # 4   < maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              TRUE            する         しない
 # 5   < maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  FALSE              TRUE            する         しない
 # 6   = maxSequenceValue  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
-# 7   = maxSequenceValue  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
-# 8   = maxSequenceValue  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 7   = maxSequenceValue  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 8   = maxSequenceValue  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
 # 9   = maxSequenceValue  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    TRUE               TRUE            しない       する
 # 10  = maxSequenceValue  > maxReservedValue  > maxReservedValue  TRUE              TRUE         TRUE      しない  TRUE               TRUE            しない       する
 #
