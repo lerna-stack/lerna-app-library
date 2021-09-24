@@ -610,8 +610,6 @@ class SequenceFactoryWorkerSpec
             maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1)),// 3
           )
       }
-      // 予約の応答を保留（1通目）
-      val reserveSequence1 = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
 
       // 採番要求: 採番予約が行われる
       {
@@ -620,21 +618,24 @@ class SequenceFactoryWorkerSpec
         expect(replyToProbe.receiveMessage().value === BigInt(3)) // firstValue
         // 採番値が枯渇する
       }
+      // 予約の応答を保留（1通目）
+      val reserveSequence1 = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+
+      // 採番要求: 採番予約が行われる
+      val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
 
       // 予約の応答を保留（2通目） - 1通目と同じ予約のリトライ
       val reserveSequence2 = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
 
-      // 採番要求: 採番予約が行われる
-      {
-        // 予約が遅延して成功（1通目）
-        reserveSequence1.replyTo ! SequenceStore.SequenceReserved(
-          maxReservedValue = reserveSequence1.maxReservedValue + (incrementStep * reserveSequence1.reservationAmount),
-        )
-        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-        expect(replyToProbe.receiveMessage().value === BigInt(13))
-        // 採番値が overflow
-      }
+      // 予約が遅延して成功（1通目）
+      reserveSequence1.replyTo ! SequenceStore.SequenceReserved(
+        maxReservedValue = reserveSequence1.maxReservedValue + (incrementStep * reserveSequence1.reservationAmount),
+      )
+      // 採番が成功する
+      expect(replyToProbe.receiveMessage().value === BigInt(13))
+      // 採番値が overflow
+
       // リセットが要求される
       val reserveSequence3 = storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
 

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `lerna-util-sequence`
   - Can not generating sequence number correctly on corner cases [#49](https://github.com/lerna-stack/lerna-app-library/issues/49)
+  - Reserving an unnecessary extra sequence value when there are not enough sequence values in stock [PR#57(comment)](https://github.com/lerna-stack/lerna-app-library/pull/57#discussion_r713544755)
 
 ## [v2.0.0] - 2021-07-16
 [v2.0.0]: https://github.com/lerna-stack/lerna-app-library/compare/v1.0.0...v2.0.0

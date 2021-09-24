@@ -60,6 +60,9 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
       reservationFactor: Int,
   )
 
+  /** ここに実装されているメソッドは採番前に実行されることを想定する。
+    * 例えば [[remainAmount]] は、[[nextValue]] がまだ消費されていない前提で残数を返す。
+    */
   final case class SequenceContext(maxReservedValue: BigInt, nextValue: BigInt) {
 
     /** 採番値を次に進める */
@@ -68,9 +71,15 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
 
     /** 採番可能なシーケンスの残数 */
     def remainAmount(implicit config: SequenceConfig): BigInt =
-      if (maxReservedValue > nextValue) {
-        (maxReservedValue - nextValue) / config.incrementStep
-      } else BigInt(0)
+      if (isEmpty) {
+        BigInt(0)
+      } else {
+        val remainExceptNextValue =
+          if (maxReservedValue > nextValue) {
+            ((maxReservedValue - nextValue) / config.incrementStep)
+          } else BigInt(0)
+        remainExceptNextValue + 1 // nextValue 分 + 1 する
+      }
 
     /** 追加で予約可能なシーケンスの数 */
     def freeAmount(implicit config: SequenceConfig): Int =
