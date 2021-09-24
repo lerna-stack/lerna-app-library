@@ -151,7 +151,7 @@ private[sequence] final class SequenceFactoryWorker(
       logger.info("initial reserved: max:{}, initial:{}", msg.maxReservedValue, msg.initialValue)
       val sequenceContext: SequenceContext =
         SequenceContext(msg.maxReservedValue, nextValue = msg.initialValue)
-      stashBuffer.unstashAll(prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext))
+      stashBuffer.unstashAll(prepareNextSequence(nextSequence = sequenceContext))
     case WrappedSequenceStoreResponse(SequenceStore.ReservationFailed) =>
       notReady(initializeTried = true)
     case message: GenerateSequence =>
@@ -190,7 +190,7 @@ private[sequence] final class SequenceFactoryWorker(
         sequenceContext.nextValue,
       )
       stashBuffer.stash(msg)
-      prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext)
+      prepareNextSequence(nextSequence = sequenceContext)
     case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReserved) =>
       stashBuffer.unstashAll(handleSequenceReserved(msg, sequenceContext))
     case WrappedSequenceStoreResponse(msg: SequenceStore.SequenceReset) =>
@@ -207,21 +207,18 @@ private[sequence] final class SequenceFactoryWorker(
   ): Behavior[Command] = {
     msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
     logger.debug("SequenceGenerated: {}", sequenceContext.nextValue)
-    prepareNextSequence(sequenceContext = sequenceContext, nextSequence = sequenceContext.next())
+    prepareNextSequence(nextSequence = sequenceContext.next())
   }
 
   @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity"))
-  private[this] def prepareNextSequence(
-      sequenceContext: SequenceContext,
-      nextSequence: SequenceContext,
-  ): Behavior[Command] = {
+  private[this] def prepareNextSequence(nextSequence: SequenceContext): Behavior[Command] = {
     if (nextSequence.isOverflow) {
       reset()
       empty(nextSequence)
     } else if (nextSequence.isEmpty) {
       val freeAmount = nextSequence.freeAmount
       if (freeAmount > 0) {
-        reserve(sequenceContext = sequenceContext, amount = freeAmount)
+        reserve(sequenceContext = nextSequence, amount = freeAmount)
         empty(nextSequence)
       } else {
         val message =
@@ -232,7 +229,7 @@ private[sequence] final class SequenceFactoryWorker(
     } else if (nextSequence.isStarving) {
       val freeAmount = nextSequence.freeAmount
       if (freeAmount > 0) {
-        reserve(sequenceContext = sequenceContext, amount = freeAmount)
+        reserve(sequenceContext = nextSequence, amount = freeAmount)
         ready(nextSequence)
       } else {
         ready(nextSequence)

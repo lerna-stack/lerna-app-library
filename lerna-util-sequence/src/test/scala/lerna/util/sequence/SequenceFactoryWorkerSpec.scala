@@ -1,5 +1,6 @@
 package lerna.util.sequence
 
+import akka.actor.testkit.typed.scaladsl.LoggingTestKit
 import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
@@ -90,8 +91,10 @@ class SequenceFactoryWorkerSpec
 
       val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
       // reservationAmount が 2 なので、1回採番しても枯渇しないが、事前に採番予約が行われる
-      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-      replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(3, sequenceSubId))
+      LoggingTestKit.info("Reserving sequence: remain 1, add 1, current max reserved: 13").expect {
+        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+        replyToProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(3, sequenceSubId))
+      }
 
       // 事前に採番予約される
       inside(storeProbe.receiveMessage()) {
