@@ -348,11 +348,16 @@ class SequenceFactoryWorkerSpec
         expect(replyToProbe.receiveMessage().value === BigInt(13)) // firstValue + incrementStep
       }
 
-      // 予約を失敗させる
+      // 予約を失敗させる（採番値が不足した時点から予約が行われるので、2通予約要求が来る）
       inside(storeProbe.receiveMessage()) {
         case result: SequenceStore.ReserveSequence =>
           result.replyTo ! SequenceStore.ReservationFailed
       }
+      inside(storeProbe.receiveMessage()) {
+        case result: SequenceStore.ReserveSequence =>
+          result.replyTo ! SequenceStore.ReservationFailed
+      }
+      storeProbe.expectNoMessage()
 
       // 採番要求: 予約できていないのでレスポンスは来ない
       val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
