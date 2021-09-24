@@ -536,7 +536,7 @@ class SequenceFactoryWorkerSpec
       val storeProbe        = createTestProbe[SequenceStore.Command]()
       val firstValue        = 5
       val incrementStep     = 10
-      val maxSequenceValue  = 15 // 1 回の採番で枯渇する値
+      val maxSequenceValue  = 15 // 2 回の採番で枯渇する値
       val reservationAmount = 2
       val worker = spawn(
         SequenceFactoryWorker
