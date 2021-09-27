@@ -313,73 +313,6 @@ class SequenceFactoryWorkerSpec
       testKit.stop(worker)
     }
 
-    "採番値が枯渇しているときに予約に失敗した場合は次の採番要求で再度予約が要求される" in {
-      val storeProbe        = createTestProbe[SequenceStore.Command]()
-      val firstValue        = 3
-      val incrementStep     = 10
-      val reservationAmount = 2
-      val worker = spawn(
-        SequenceFactoryWorker
-          .apply(
-            maxSequenceValue = 999,
-            firstValue = firstValue,
-            incrementStep = incrementStep,
-            reservationAmount = reservationAmount,
-            storeProbe.ref,
-            idleTimeout = 10.seconds,
-            sequenceSubId,
-          ),
-      )
-      // 初期化
-      inside(storeProbe.receiveMessage()) {
-        case result: SequenceStore.InitialReserveSequence =>
-          result.replyTo ! SequenceStore.InitialSequenceReserved(
-            initialValue = firstValue,                                                // 3
-            maxReservedValue = firstValue + (incrementStep * (reservationAmount - 1)),// 13
-          )
-      }
-
-      // 採番要求: reservationAmount が 2 なので、2回採番すると枯渇 → 予約
-      {
-        val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-        expect(replyToProbe.receiveMessage().value === BigInt(3)) // firstValue
-        worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-        expect(replyToProbe.receiveMessage().value === BigInt(13)) // firstValue + incrementStep
-      }
-
-      // 予約を失敗させる（採番値が不足した時点から予約が行われるので、2通予約要求が来る）
-      inside(storeProbe.receiveMessage()) {
-        case result: SequenceStore.ReserveSequence =>
-          result.replyTo ! SequenceStore.ReservationFailed
-      }
-      inside(storeProbe.receiveMessage()) {
-        case result: SequenceStore.ReserveSequence =>
-          result.replyTo ! SequenceStore.ReservationFailed
-      }
-      storeProbe.expectNoMessage()
-
-      // 採番要求: 予約できていないのでレスポンスは来ない
-      val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-      worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-      replyToProbe.expectNoMessage()
-
-      // 再度予約が要求される
-      inside(storeProbe.receiveMessage()) {
-        case result: SequenceStore.ReserveSequence =>
-          expect(result.maxReservedValue === BigInt(firstValue + incrementStep)) // 13
-          expect(result.reservationAmount === reservationAmount)
-          expect(result.sequenceSubId === sequenceSubId)
-          result.replyTo ! SequenceStore.SequenceReserved(
-            maxReservedValue = result.maxReservedValue + incrementStep * reservationAmount,
-          )
-      }
-
-      expect(replyToProbe.receiveMessage().value === BigInt(23)) // firstValue + incrementStep * 3
-
-      testKit.stop(worker)
-    }
-
     "採番要求で次番号が上限を超えた場合はリセットする" in {
       val storeProbe        = createTestProbe[SequenceStore.Command]()
       val firstValue        = 3
@@ -472,6 +405,9 @@ class SequenceFactoryWorkerSpec
       // 予約を成功させる
       inside(storeProbe.receiveMessage()) {
         case reserve: SequenceStore.ReserveSequence =>
+          expect(reserve.maxReservedValue === BigInt(firstValue)) // 3
+          expect(reserve.reservationAmount === reservationAmount)
+          expect(reserve.sequenceSubId === sequenceSubId)
           reserve.replyTo ! SequenceStore.SequenceReserved(maxReservedValue =
             reserve.maxReservedValue + (incrementStep * reserve.reservationAmount),
           )
