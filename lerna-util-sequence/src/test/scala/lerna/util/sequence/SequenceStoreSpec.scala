@@ -4,6 +4,8 @@ import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import scala.concurrent.duration._
 
 import java.util.UUID
 
@@ -32,7 +34,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(system.settings.config).cassandraConfig
 
   private lazy val session =
-    CqlSessionProvider.connect(system, cassandraConfig).futureValue
+    CqlSessionProvider.connect(system, cassandraConfig).futureValue(Timeout(15.seconds))
 
   override def beforeAll(): Unit = {
     super.beforeAll()
