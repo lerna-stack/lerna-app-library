@@ -1,5 +1,10 @@
 #
 # SequenceFactoryWorker が SequenceStore からの応答を受け取ったときにどのように振る舞うかケースを洗い出します
+# InitialSequenceReserved の応答はここでは考慮しません。
+# 初期化が完了するまでの間は採番が実行されず、SequenceFactoryWorker の状態変化も少ないため
+# 既存のテストケースで十分な品質が確保できていると考えたからです。
+# 既に SequenceFactoryWorker が初期化済みであるという前提のもとでテストケースを洗い出します。
+#
 # 書き方: https://github.com/Microsoft/pict/blob/main/doc/pict.md
 #
 ##################################################
