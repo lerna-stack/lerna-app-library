@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       Note that the upgrade doesn't break already-persisted data since the Cassandra database schema to use is not changed.  
       Though we have to migrate code and settings, we can continue to use already-persisted data.
 
+### Fixed
+- `lerna-util-sequence`
+    - Reserving an unnecessary extra sequence value when resetting [PR#65](https://github.com/lerna-stack/lerna-app-library/pull/65)
+    - Can not generating sequence number correctly on corner cases [#49](https://github.com/lerna-stack/lerna-app-library/issues/49)
+    - Reserving an unnecessary extra sequence value when there are not enough sequence values in stock [PR#57(comment)](https://github.com/lerna-stack/lerna-app-library/pull/57#discussion_r713544755)
 
 ## [v2.0.0] - 2021-07-16
 [v2.0.0]: https://github.com/lerna-stack/lerna-app-library/compare/v1.0.0...v2.0.0

@@ -4,6 +4,8 @@ import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import scala.concurrent.duration._
 
 import java.util.UUID
 
@@ -32,7 +34,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
   private[this] lazy val cassandraConfig = new SequenceFactoryConfig(system.settings.config).cassandraConfig
 
   private lazy val session =
-    CqlSessionProvider.connect(system, cassandraConfig).futureValue
+    CqlSessionProvider.connect(system, cassandraConfig).futureValue(Timeout(15.seconds))
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -143,6 +145,35 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       )
       // maxReservedValue = 直前の maxReservedValue + (incrementStep * reservationAmount)
       testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
+
+      testKit.stop(store)
+    }
+
+    "リセット時は reservationAmount で指定した分だけの採番値が予約される" in {
+      val store = spawn(
+        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
+      )
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      store ! SequenceStore.ResetReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      // reservationAmount = ((maxReservedValue - firstValue) / incrementStep) + 1
+      // 101 = ((301 - 1) / 3) + 1
+      testProbe.expectMessage(SequenceStore.SequenceReset(maxReservedValue = 301))
 
       testKit.stop(store)
     }
