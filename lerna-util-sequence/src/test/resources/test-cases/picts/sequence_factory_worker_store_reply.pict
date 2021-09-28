@@ -70,20 +70,30 @@ THEN [isEmpty] = "TRUE";
 # @received.isEmpty
 
 # 予約成功
-IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND ([msg] = "SequenceReserved" AND [msg.maxReservedValue] = "> ctx.maxReservedValue")
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND [msg] = "SequenceReserved" AND [msg.maxReservedValue] = "> ctx.maxReservedValue"
 THEN [@received.isEmpty] = "FALSE";
 
 # 予約未成功
-IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND ([msg] <> "SequenceReserved" OR [msg.maxReservedValue] <> "> ctx.maxReservedValue")
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND [msg] = "ReservationFailed"
 THEN [@received.isEmpty] = "TRUE";
 
+# 予約応答の重複（予約をリトライした場合に発生する可能性がある）
+IF [msg] = "SequenceReserved" AND [msg.maxReservedValue] = "= ctx.maxReservedValue"
+THEN [@received.isEmpty] = [isEmpty];
+
 # リセット成功
-IF [isOverflow] = "TRUE" AND ([msg] = "SequenceReset" AND [msg.maxReservedValue] = "< ctx.maxReservedValue")
+# msg.maxReservedValue = ctx.maxReservedValue となるケースは通常考えにくいが、
+# 1回目の予約で上限ギリギリまで予約してしまうような設定をしていると発生しうる（全採番値を通して 1 回しか予約が発生しないケース）
+IF [isOverflow] = "TRUE" AND [msg] = "SequenceReset" AND ([msg.maxReservedValue] = "< ctx.maxReservedValue" OR [msg.maxReservedValue] = "= ctx.maxReservedValue")
 THEN [@received.isEmpty] = "FALSE";
 
 # リセット未成功
-IF [isOverflow] = "TRUE" AND ([msg] <> "SequenceReset" OR [msg.maxReservedValue] <> "< ctx.maxReservedValue")
+IF [isOverflow] = "TRUE" AND [msg] = "ReservationFailed"
 THEN [@received.isEmpty] = "TRUE";
+
+# リセット応答の重複（リセットリトライした場合に発生する可能性がある）
+IF [isOverflow] = "FALSE" AND [msg] = "SequenceReset"
+THEN [@received.isEmpty] = [isEmpty];
 
 # 採番せずに枯渇することはない
 IF [isEmpty] = "FALSE"
@@ -112,7 +122,7 @@ ELSE [@採番] = "できる";
 # 11  TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
 # 12  TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
 # 13  TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  FALSE              できる
-# 14  TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  TRUE               できない
+# 14  TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  FALSE              できる
 #
 # 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
 # 重複ID  No  isEmpty  isOverflow  msg  msg.maxReservedValue  @received.isEmpty  @採番
