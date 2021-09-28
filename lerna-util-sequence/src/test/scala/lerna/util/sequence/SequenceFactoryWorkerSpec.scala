@@ -629,411 +629,379 @@ class SequenceFactoryWorkerSpec
   private val incrementStep = 10
 
   "SequenceFactoryWorker" when {
-    "maxReservedValue < maxSequenceValue" when {
-      "nextValue < maxReservedValue" when {
-        "after_nextValue < maxReservedValue" when {
-          "after_isStarving == false" should {
-            "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(9999)
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 3,
-                // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false
-                reservationAmount = 10,
-                storeProbe,
-              )
+    "maxReservedValue < maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false" should {
+      "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(9999)
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 3,
+          // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false
+          reservationAmount = 10,
+          storeProbe,
+        )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
-              storeProbe.expectNoMessage()
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        storeProbe.expectNoMessage()
 
-              {
-                // 採番要求: 採番する, 予約しない, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
-          "after_isStarving == true" should {
-            "採番する, 予約する, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(9999)
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 1,
-                // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true
-                reservationAmount = 3,
-                storeProbe,
-              )
-
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
-              storeProbe.expectNoMessage()
-
-              {
-                // 準備: 次の予約要求で `after_isStarving == true` になるようにする
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 採番要求: 採番する, 予約する, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectMessageType[SequenceStore.ReserveSequence]
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
+        {
+          // 採番要求: 採番する, 予約しない, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectNoMessage()
         }
-        "after_nextValue == maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番する, 予約する, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(9999)
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 3,
-                // nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true
-                reservationAmount = 2,
-                storeProbe,
-              )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
-              storeProbe.expectNoMessage()
-
-              {
-                // 採番要求: 採番する, 予約する, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectMessageType[SequenceStore.ReserveSequence]
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
-        }
-      }
-      "nextValue == maxReservedValue" when {
-        "after_nextValue > maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番する, 予約する, リセットしない, 次の採番要求に即座に応答しない" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(9999)
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 3,
-                // nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
-                reservationAmount = 1,
-                storeProbe,
-              )
-
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
-              storeProbe.expectNoMessage()
-
-              {
-                // 採番要求: 採番する, 予約する, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectMessageType[SequenceStore.ReserveSequence]
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答しない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-              }
-            }
-          }
-        }
-      }
-      "nextValue > maxReservedValue" when {
-        "after_nextValue > maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番しない, 予約する, リセットしない, 次の採番要求に即座に応答しない" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(9999)
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 3,
-                // nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
-                reservationAmount = 1,
-                storeProbe,
-              )
-
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
-              storeProbe.expectNoMessage()
-
-              {
-                // 準備
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                expect(replyToProbe.receiveMessage().value === maxReservedValue) // nextValue > maxReservedValue
-                storeProbe.expectMessageType[SequenceStore.ReserveSequence]
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 採番しない, 予約する, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-                storeProbe.expectMessageType[SequenceStore.ReserveSequence]
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答しない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-              }
-            }
-          }
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
         }
       }
     }
-    "maxReservedValue == maxSequenceValue" when {
-      "nextValue < maxReservedValue" when {
-        "after_nextValue < maxReservedValue" when {
-          "after_isStarving == false" should {
-            "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(81) // maxReservedValue == maxSequenceValue
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 11,
-                // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false
-                reservationAmount = 8,
-                storeProbe,
-              )
+    "maxReservedValue < maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約する, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(9999)
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 1,
+          // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true
+          reservationAmount = 3,
+          storeProbe,
+        )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
-              storeProbe.expectNoMessage()
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        storeProbe.expectNoMessage()
 
-              {
-                // 採番要求: 採番する, 予約しない, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
-          "after_isStarving == true" should {
-            "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(31) // maxReservedValue == maxSequenceValue
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 11,
-                // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true
-                reservationAmount = 3,
-                storeProbe,
-              )
-
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
-              storeProbe.expectNoMessage()
-
-              {
-                // 採番要求: 採番する, 予約しない, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
+        {
+          // 準備: 次の予約要求で `after_isStarving == true` になるようにする
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectNoMessage()
         }
-        "after_nextValue == maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(21) // maxReservedValue == maxSequenceValue
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 11,
-                // nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true
-                reservationAmount = 2,
-                storeProbe,
-              )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
-              storeProbe.expectNoMessage()
+        {
+          // 採番要求: 採番する, 予約する, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+          storeProbe.expectNoMessage()
+        }
 
-              {
-                // 採番要求: 採番する, 予約しない, リセットしない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                val generatedValue = replyToProbe.receiveMessage().value
-                expect(generatedValue < maxReservedValue)                   // nextValue < maxReservedValue
-                expect(generatedValue + incrementStep === maxReservedValue) // after_nextValue == maxReservedValue
-                storeProbe.expectNoMessage()
-              }
-
-              {
-                // 次の採番要求に即座に応答する
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.receiveMessage()
-              }
-            }
-          }
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
         }
       }
-      "nextValue == maxReservedValue" when {
-        "after_nextValue > maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番する, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 11,
-                // nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
-                reservationAmount = 1,
-                storeProbe,
-              )
+    }
+    "maxReservedValue < maxSequenceValue, nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約する, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(9999)
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 3,
+          // nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true
+          reservationAmount = 2,
+          storeProbe,
+        )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
-              storeProbe.expectNoMessage()
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        storeProbe.expectNoMessage()
 
-              {
-                // 採番要求: 採番する, 予約しない, リセットする
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                val generatedValue = replyToProbe.receiveMessage().value
-                expect(generatedValue === maxReservedValue)               // nextValue == maxReservedValue
-                expect(generatedValue + incrementStep > maxReservedValue) // after_nextValue > maxReservedValue
-                storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
-                storeProbe.expectNoMessage()
-              }
+        {
+          // 採番要求: 採番する, 予約する, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+          storeProbe.expectNoMessage()
+        }
 
-              {
-                // 次の採番要求に即座に応答しない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-              }
-            }
-          }
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
         }
       }
-      "nextValue > maxReservedValue" when {
-        "after_nextValue > maxReservedValue" when {
-          "after_isStarving == true" should {
-            "採番しない, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
-              val storeProbe       = createTestProbe[SequenceStore.Command]()
-              val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
-              val worker = createWorker(
-                maxSequenceValue = maxSequenceValue,
-                firstValue = 11,
-                // nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
-                reservationAmount = 1,
-                storeProbe,
-              )
+    }
+    "maxReservedValue < maxSequenceValue, nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約する, リセットしない, 次の採番要求に即座に応答しない" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(9999)
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 3,
+          // nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
+          reservationAmount = 1,
+          storeProbe,
+        )
 
-              // 初期化
-              val maxReservedValue =
-                initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-              expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
-              storeProbe.expectNoMessage()
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        storeProbe.expectNoMessage()
 
-              {
-                // 準備
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                expect(replyToProbe.receiveMessage().value === maxReservedValue) // nextValue > maxReservedValue
-                storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
-                storeProbe.expectNoMessage()
-              }
+        {
+          // 採番要求: 採番する, 予約する, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+          storeProbe.expectNoMessage()
+        }
 
-              {
-                // 採番しない, 予約する, リセットする
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-                storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
-                storeProbe.expectNoMessage()
-              }
+        {
+          // 次の採番要求に即座に応答しない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
+        }
+      }
+    }
+    "maxReservedValue < maxSequenceValue, nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
+      "採番しない, 予約する, リセットしない, 次の採番要求に即座に応答しない" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(9999)
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 3,
+          // nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
+          reservationAmount = 1,
+          storeProbe,
+        )
 
-              {
-                // 次の採番要求に即座に応答しない
-                val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
-                worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
-                replyToProbe.expectNoMessage()
-              }
-            }
-          }
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 準備
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          expect(replyToProbe.receiveMessage().value === maxReservedValue) // nextValue > maxReservedValue
+          storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 採番しない, 予約する, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
+          storeProbe.expectMessageType[SequenceStore.ReserveSequence]
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答しない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
+        }
+      }
+    }
+    "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false" should {
+      "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(81) // maxReservedValue == maxSequenceValue
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 11,
+          // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false
+          reservationAmount = 8,
+          storeProbe,
+        )
+
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 採番要求: 採番する, 予約しない, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+        }
+      }
+    }
+    "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(31) // maxReservedValue == maxSequenceValue
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 11,
+          // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true
+          reservationAmount = 3,
+          storeProbe,
+        )
+
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 採番要求: 採番する, 予約しない, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+        }
+      }
+    }
+    "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(21) // maxReservedValue == maxSequenceValue
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 11,
+          // nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true
+          reservationAmount = 2,
+          storeProbe,
+        )
+
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 採番要求: 採番する, 予約しない, リセットしない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          val generatedValue = replyToProbe.receiveMessage().value
+          expect(generatedValue < maxReservedValue)                   // nextValue < maxReservedValue
+          expect(generatedValue + incrementStep === maxReservedValue) // after_nextValue == maxReservedValue
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答する
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.receiveMessage()
+        }
+      }
+    }
+    "maxReservedValue == maxSequenceValue, nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
+      "採番する, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 11,
+          // nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
+          reservationAmount = 1,
+          storeProbe,
+        )
+
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 採番要求: 採番する, 予約しない, リセットする
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          val generatedValue = replyToProbe.receiveMessage().value
+          expect(generatedValue === maxReservedValue)               // nextValue == maxReservedValue
+          expect(generatedValue + incrementStep > maxReservedValue) // after_nextValue > maxReservedValue
+          storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答しない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
+        }
+      }
+    }
+    "maxReservedValue == maxSequenceValue, nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
+      "採番しない, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
+        val storeProbe       = createTestProbe[SequenceStore.Command]()
+        val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
+        val worker = createWorker(
+          maxSequenceValue = maxSequenceValue,
+          firstValue = 11,
+          // nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
+          reservationAmount = 1,
+          storeProbe,
+        )
+
+        // 初期化
+        val maxReservedValue =
+          initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
+        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        storeProbe.expectNoMessage()
+
+        {
+          // 準備
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          expect(replyToProbe.receiveMessage().value === maxReservedValue) // nextValue > maxReservedValue
+          storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 採番しない, 予約する, リセットする
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
+          storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
+          storeProbe.expectNoMessage()
+        }
+
+        {
+          // 次の採番要求に即座に応答しない
+          val replyToProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, replyToProbe.ref)
+          replyToProbe.expectNoMessage()
         }
       }
     }
