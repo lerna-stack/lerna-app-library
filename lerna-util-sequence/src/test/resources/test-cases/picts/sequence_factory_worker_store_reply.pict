@@ -89,10 +89,6 @@ THEN [@received.isEmpty] = "TRUE";
 IF [isEmpty] = "FALSE"
 THEN [@received.isEmpty] = "FALSE";
 
-# 採番せずに採番値が減ることはない
-IF [@採番] = "しない" AND [isEmpty] = "FALSE"
-THEN [@received.isEmpty] = "FALSE";
-
 # @採番
 
 # 採番値が枯渇していないときだけ採番する
