@@ -628,7 +628,10 @@ class SequenceFactoryWorkerSpec
 
   private val incrementStep = 10
 
-  "SequenceFactoryWorker" when {
+  // GenerateSequence が届いた場合の振る舞いの網羅テスト
+  // 各条件の説明などは↓を参照
+  // lerna-util-sequence/src/test/resources/test-cases/picts/sequence_factory_worker_gen.pict
+  "SequenceFactoryWorker (GenerateSequence)" when {
     "maxReservedValue < maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false" should {
       "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
