@@ -644,7 +644,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        expect(maxReservedValue < maxSequenceValue) // 前提条件を確認: maxReservedValue < maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -678,7 +678,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        expect(maxReservedValue < maxSequenceValue) // 前提条件を確認: maxReservedValue < maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -721,7 +721,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        expect(maxReservedValue < maxSequenceValue) // 前提条件を確認: maxReservedValue < maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -756,7 +756,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        expect(maxReservedValue < maxSequenceValue) // 前提条件を確認: maxReservedValue < maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -791,7 +791,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue < maxSequenceValue) // maxReservedValue < maxSequenceValue
+        expect(maxReservedValue < maxSequenceValue) // 前提条件を確認: maxReservedValue < maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -835,7 +835,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        expect(maxReservedValue === maxSequenceValue) // 前提条件を確認: maxReservedValue == maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -869,7 +869,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        expect(maxReservedValue === maxSequenceValue) // 前提条件を確認: maxReservedValue == maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -903,7 +903,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        expect(maxReservedValue === maxSequenceValue) // 前提条件を確認: maxReservedValue == maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -939,7 +939,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        expect(maxReservedValue === maxSequenceValue) // 前提条件を確認: maxReservedValue == maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
@@ -976,7 +976,7 @@ class SequenceFactoryWorkerSpec
         // 初期化
         val maxReservedValue =
           initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]).maxReservedValue
-        expect(maxReservedValue === maxSequenceValue) // maxReservedValue == maxSequenceValue
+        expect(maxReservedValue === maxSequenceValue) // 前提条件を確認: maxReservedValue == maxSequenceValue
         storeProbe.expectNoMessage()
 
         {
