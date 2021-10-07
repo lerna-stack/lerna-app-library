@@ -826,10 +826,10 @@ class SequenceFactoryWorkerSpec
     "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false" should {
       "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
-        val maxSequenceValue = BigInt(81) // maxReservedValue == maxSequenceValue
+        val maxSequenceValue = BigInt(71) // maxReservedValue == maxSequenceValue
         val worker = createWorker(
           maxSequenceValue = maxSequenceValue,
-          firstValue = 11,
+          firstValue = 1,
           // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == false
           reservationAmount = 8,
           storeProbe,
@@ -860,10 +860,10 @@ class SequenceFactoryWorkerSpec
     "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true" should {
       "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
-        val maxSequenceValue = BigInt(31) // maxReservedValue == maxSequenceValue
+        val maxSequenceValue = BigInt(21) // maxReservedValue == maxSequenceValue
         val worker = createWorker(
           maxSequenceValue = maxSequenceValue,
-          firstValue = 11,
+          firstValue = 1,
           // nextValue < maxReservedValue, after_nextValue < maxReservedValue, after_isStarving == true
           reservationAmount = 3,
           storeProbe,
@@ -894,10 +894,10 @@ class SequenceFactoryWorkerSpec
     "maxReservedValue == maxSequenceValue, nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true" should {
       "採番する, 予約しない, リセットしない, 次の採番要求に即座に応答する" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
-        val maxSequenceValue = BigInt(21) // maxReservedValue == maxSequenceValue
+        val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
         val worker = createWorker(
           maxSequenceValue = maxSequenceValue,
-          firstValue = 11,
+          firstValue = 1,
           // nextValue < maxReservedValue, after_nextValue == maxReservedValue, after_isStarving == true
           reservationAmount = 2,
           storeProbe,
@@ -930,10 +930,10 @@ class SequenceFactoryWorkerSpec
     "maxReservedValue == maxSequenceValue, nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
       "採番する, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
-        val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
+        val maxSequenceValue = BigInt(1) // maxReservedValue == maxSequenceValue
         val worker = createWorker(
           maxSequenceValue = maxSequenceValue,
-          firstValue = 11,
+          firstValue = 1,
           // nextValue == maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
           reservationAmount = 1,
           storeProbe,
@@ -967,10 +967,10 @@ class SequenceFactoryWorkerSpec
     "maxReservedValue == maxSequenceValue, nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true" should {
       "採番しない, 予約しない, リセットする, 次の採番要求に即座に応答しない" in {
         val storeProbe       = createTestProbe[SequenceStore.Command]()
-        val maxSequenceValue = BigInt(11) // maxReservedValue == maxSequenceValue
+        val maxSequenceValue = BigInt(1) // maxReservedValue == maxSequenceValue
         val worker = createWorker(
           maxSequenceValue = maxSequenceValue,
-          firstValue = 11,
+          firstValue = 1,
           // nextValue > maxReservedValue, after_nextValue > maxReservedValue, after_isStarving == true
           reservationAmount = 1,
           storeProbe,
