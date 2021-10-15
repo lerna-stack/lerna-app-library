@@ -9,6 +9,8 @@
 # 予約済みの採番値の最大値
 # - 予約可能な最大値 = maxSequenceValue - ((maxSequenceValue - firstValue) % incrementStep)
 # - maxReservedValue > 予約可能な最大値 は仕様上ありえない
+#   ※ 内部処理の問題により、この状態になる可能性はある。ただし、発生したとしても実害がないことは確認済み
+#      詳しくは次の issue を参照： https://github.com/lerna-stack/lerna-app-library/issues/69
 maxReservedValue: = 予約可能な最大値, < 予約可能な最大値
 
 # 次に採番予定の値
