@@ -5,23 +5,26 @@ set -eu
 readonly output_label='##################### OUTPUT #####################'
 
 readonly result_file="$(mktemp)"
-readonly pict_output_file="$(mktemp)"
+readonly pict_all_pair_output_file="$(mktemp)"
+readonly pict_cover_all_output_file="$(mktemp)"
 
 trap on_exit EXIT
 function on_exit {
-  rm "${result_file}" "${pict_output_file}"
+  rm "${result_file}" "${pict_all_pair_output_file}" "${pict_cover_all_output_file}"
 }
 
 function main {
   local pict_file="$1" nr_of_column
 
-  nr_of_column="$(count_column "${pict_file}")"
+  cat "${pict_file}" | pict > "${pict_all_pair_output_file}"
+
+  nr_of_column="$(count_column "${pict_all_pair_output_file}")"
 
   # -o: オプションで条件数と同じ数を指定することで全網羅パターンを出力できる。（デフォルトではペアワイズ法によりケースが絞られる）
   # 参考：
   # ペアワイズ法によるテストケース抽出ツール「PICT」を使ってテストケースを85%削減する - Qiita
   # https://qiita.com/bremen/items/6eceddc534d87fc797cc
-  cat "${pict_file}" | pict -o:${nr_of_column} > "${pict_output_file}"
+  cat "${pict_file}" | pict -o:${nr_of_column} > "${pict_cover_all_output_file}"
 
   {
     cat "${pict_file}" | remove_output
@@ -29,18 +32,21 @@ function main {
   } > "${result_file}"
   {
     echo "# 全組み合わせ網羅ケース:"
-    normalize_pict_output "${pict_output_file}" | decorate_table
+    normalize_pict_output "${pict_cover_all_output_file}" | decorate_table
     echo "#"
     echo "# 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:"
-    normalize_pict_output "${pict_output_file}" | print_repeated_factors | decorate_table
+    normalize_pict_output "${pict_cover_all_output_file}" | print_repeated_factors | decorate_table
+    echo "#"
+    echo "# オールペア（2因子間網羅）ケース："
+    normalize_pict_output "${pict_all_pair_output_file}" | decorate_table
   } | tee -a "${result_file}"
 
   cat "${result_file}" > "${pict_file}"
 }
 
 function count_column {
-  local pict_file="$1"
-  cat "${pict_file}" | pict | head -n 1 | awk -v FS='\t' '{ print NF }'
+  local pict_output_file="$1"
+  head -n 1 "${pict_output_file}" | awk -v FS='\t' '{ print NF }'
 }
 
 function remove_output {

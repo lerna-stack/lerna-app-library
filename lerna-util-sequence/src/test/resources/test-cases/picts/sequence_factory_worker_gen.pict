@@ -164,3 +164,15 @@ ELSE [@採番値リセット] = "しない";
 #
 # 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
 # 重複ID  No  maxReservedValue  nextValue  after_nextValue  after_isStarving  @isOverflow  @isEmpty  @採番  @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+#
+# オールペア（2因子間網羅）ケース：
+# No  maxReservedValue    nextValue           after_nextValue     after_isStarving  @isOverflow  @isEmpty  @採番   @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+# 1   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 2   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 3   < 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 4   < 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              TRUE            する         しない
+# 5   < 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  FALSE              TRUE            する         しない
+# 6   = 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 7   = 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 8   = 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    TRUE               TRUE            しない       する
+# 9   = 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              TRUE         TRUE      しない  TRUE               TRUE            しない       する
