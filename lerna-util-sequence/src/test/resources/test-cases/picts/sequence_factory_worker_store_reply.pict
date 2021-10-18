@@ -60,6 +60,12 @@ THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
 IF [isOverflow] = "TRUE"
 THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
 
+# オーバーフローしていない状態で msg.maxReservedValue < ctx.maxReservedValue となる SequenceReset が返ってくることは、
+# SequenceStore へのコマンドに対する応答が返ってくる順序が前後しない限りはない
+# 現在の実装では、コマンドを送った順番どおりに SequenceStore から応答が返ってくる
+IF [isOverflow] = "FALSE" AND [msg] = "SequenceReset"
+THEN [msg.maxReservedValue] <> "< ctx.maxReservedValue";
+
 # isEmpty
 
 # オーバフローしているということは採番値がないことと同義
@@ -117,17 +123,15 @@ ELSE [@採番] = "できる";
 # 1   FALSE    FALSE       ReservationFailed  NaN                     FALSE              できる
 # 2   FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  FALSE              できる
 # 3   FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
-# 4   FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  FALSE              できる
-# 5   FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE              できる
-# 6   TRUE     FALSE       ReservationFailed  NaN                     TRUE               できない
-# 7   TRUE     FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE               できない
-# 8   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
-# 9   TRUE     FALSE       SequenceReset      < ctx.maxReservedValue  TRUE               できない
-# 10  TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE               できない
-# 11  TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
-# 12  TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
-# 13  TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  FALSE              できる
-# 14  TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  FALSE              できる
+# 4   FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE              できる
+# 5   TRUE     FALSE       ReservationFailed  NaN                     TRUE               できない
+# 6   TRUE     FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE               できない
+# 7   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
+# 8   TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE               できない
+# 9   TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
+# 10  TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
+# 11  TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  FALSE              できる
+# 12  TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  FALSE              できる
 #
 # 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
 # 重複ID  No  isEmpty  isOverflow  msg  msg.maxReservedValue  @received.isEmpty  @採番
@@ -137,9 +141,9 @@ ELSE [@採番] = "できる";
 # 1   FALSE    FALSE       ReservationFailed  NaN                     FALSE              できる
 # 2   FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  FALSE              できる
 # 3   FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
-# 4   FALSE    FALSE       SequenceReset      < ctx.maxReservedValue  FALSE              できる
-# 5   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
-# 6   TRUE     FALSE       SequenceReset      < ctx.maxReservedValue  TRUE               できない
+# 4   FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE              できる
+# 5   TRUE     FALSE       ReservationFailed  NaN                     TRUE               できない
+# 6   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
 # 7   TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE               できない
 # 8   TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
 # 9   TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
