@@ -1,0 +1,178 @@
+#
+# SequenceFactoryWorker が SequenceContext の状態にもとづきどのように振る舞うかケースを洗い出します
+# 書き方: https://github.com/Microsoft/pict/blob/main/doc/pict.md
+#
+##################################################
+# 条件
+##################################################
+
+# 予約済みの採番値の最大値
+# - 予約可能な最大値 = maxSequenceValue - ((maxSequenceValue - firstValue) % incrementStep)
+# - maxReservedValue > 予約可能な最大値 は仕様上ありえない
+#   ※ 内部処理の問題により、この状態になる可能性はある。ただし、発生したとしても実害がないことは確認済み
+#      詳しくは次の issue を参照： https://github.com/lerna-stack/lerna-app-library/issues/69
+maxReservedValue: = 予約可能な最大値, < 予約可能な最大値
+
+# 次に採番予定の値
+nextValue: > maxReservedValue, = maxReservedValue, < maxReservedValue
+
+# [採番後] 次に採番予定の値
+after_nextValue: <nextValue>
+
+# [採番後] 発行できるシーケンスが少なくなっているかどうか
+# reservationFactor を抽象化する
+#
+after_isStarving: TRUE, FALSE
+
+##################################################
+# 結果
+##################################################
+
+# 発行できるシーケンスの最大値を超えている
+@isOverflow: TRUE, FALSE
+
+# 発行できるシーケンスがない
+@isEmpty: TRUE, FALSE
+
+@採番: する, しない
+
+# [採番後] 発行できるシーケンスの最大値を超えている
+@after_isOverflow: <@isOverflow>
+
+# [採番後] 発行できるシーケンスがない
+@after_isEmpty: <@isEmpty>
+
+@採番値予約: する, しない
+
+@採番値リセット: する, しない
+
+##################################################
+# 条件の制約
+##################################################
+
+# after_isStarving
+
+# remainAmount = 0 の場合 isStarving は常に TRUE になる
+# maxReservedValue < nextValue, maxReservedValue = nextValue の場合に remainAmount = 0 となる
+#
+IF [after_nextValue] = "> maxReservedValue" OR [after_nextValue] = "= maxReservedValue"
+THEN [after_isStarving] = "TRUE";
+
+IF [@after_isEmpty] = "TRUE"
+THEN [after_isStarving] = "TRUE";
+
+# after_nextValue
+
+IF [@採番] = "しない"
+THEN [after_nextValue] = [nextValue];
+
+IF [@採番] = "する" AND [nextValue] = "< maxReservedValue"
+THEN [after_nextValue] = "< maxReservedValue" OR [after_nextValue] = "= maxReservedValue";
+
+IF [@採番] = "する" AND [nextValue] = "= maxReservedValue"
+THEN [after_nextValue] = "> maxReservedValue";
+
+##################################################
+# 結果の条件
+##################################################
+
+# @isOverflow
+
+IF [maxReservedValue] = "= 予約可能な最大値" AND [nextValue] = "> maxReservedValue"
+THEN [@isOverflow] = "TRUE";
+
+IF [maxReservedValue] = "= 予約可能な最大値" AND [nextValue] in { "= maxReservedValue", "< maxReservedValue" }
+THEN [@isOverflow] = "FALSE";
+
+IF [maxReservedValue] = "< 予約可能な最大値"
+THEN [@isOverflow] = "FALSE";
+
+# @isEmpty
+
+IF [nextValue] = "> maxReservedValue"
+THEN [@isEmpty] = "TRUE"
+ELSE [@isEmpty] = "FALSE";
+
+# @採番
+# 採番と、採番値予約/リセット で SequenceContext の状態が評価されるタイミングが異なることに注意してください
+# 採番するかどうかは採番前の SequenceContext にもとづき決定しますが、
+# 採番値予約/リセットするかどうかは採番後の SequenceContext（nextValue がインクリメントされたもの）にもとづき決定します
+
+IF [@isEmpty] = "TRUE"
+THEN [@採番] = "しない"
+ELSE [@採番] = "する";
+
+# @after_isOverflow
+
+IF [@採番] = "しない"
+THEN [@after_isOverflow] = [@isOverflow];
+
+IF [@採番] = "する" AND [maxReservedValue] = "= 予約可能な最大値" AND [after_nextValue] = "> maxReservedValue"
+THEN [@after_isOverflow] = "TRUE";
+
+IF [@採番] = "する" AND [maxReservedValue] = "= 予約可能な最大値" AND [after_nextValue] in { "= maxReservedValue", "< maxReservedValue" }
+THEN [@after_isOverflow] = "FALSE";
+
+IF [maxReservedValue] = "< 予約可能な最大値"
+THEN [@after_isOverflow] = "FALSE";
+
+# @after_isEmpty
+
+IF [after_nextValue] = "> maxReservedValue"
+THEN [@after_isEmpty] = "TRUE"
+ELSE [@after_isEmpty] = "FALSE";
+
+# @採番値予約
+
+IF [@after_isOverflow] = "TRUE"
+THEN [@採番値予約] = "しない";
+
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "< 予約可能な最大値" AND [after_isStarving] = "TRUE"
+THEN [@採番値予約] = "する";
+
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "< 予約可能な最大値" AND [@after_isEmpty] = "TRUE"
+THEN [@採番値予約] = "する";
+
+IF [@after_isOverflow] = "FALSE" AND [maxReservedValue] = "= 予約可能な最大値"
+THEN [@採番値予約] = "しない";
+
+IF [@after_isOverflow] = "FALSE" AND [after_isStarving] = "FALSE" AND [@after_isEmpty] = "FALSE"
+THEN [@採番値予約] = "しない";
+
+IF [maxReservedValue] = "= 予約可能な最大値" AND [@after_isEmpty] = "TRUE"
+THEN [@採番値予約] = "しない";
+
+# @採番値リセット
+
+IF [@after_isOverflow] = "TRUE" AND [@after_isEmpty] = "TRUE"
+THEN [@採番値リセット] = "する"
+ELSE [@採番値リセット] = "しない";
+
+##################### OUTPUT #####################
+# 全組み合わせ網羅ケース:
+# No  maxReservedValue    nextValue           after_nextValue     after_isStarving  @isOverflow  @isEmpty  @採番   @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+# 1   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 2   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 3   < 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 4   < 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              TRUE            する         しない
+# 5   < 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  FALSE              TRUE            する         しない
+# 6   = 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 7   = 予約可能な最大値  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 8   = 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 9   = 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    TRUE               TRUE            しない       する
+# 10  = 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              TRUE         TRUE      しない  TRUE               TRUE            しない       する
+#
+# 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
+# 重複ID  No  maxReservedValue  nextValue  after_nextValue  after_isStarving  @isOverflow  @isEmpty  @採番  @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+#
+# オールペア（2因子間網羅）ケース：
+# No  maxReservedValue    nextValue           after_nextValue     after_isStarving  @isOverflow  @isEmpty  @採番   @after_isOverflow  @after_isEmpty  @採番値予約  @採番値リセット
+# 1   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 2   < 予約可能な最大値  < maxReservedValue  < maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 3   < 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           する         しない
+# 4   < 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              TRUE            する         しない
+# 5   < 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              FALSE        TRUE      しない  FALSE              TRUE            する         しない
+# 6   = 予約可能な最大値  < maxReservedValue  < maxReservedValue  FALSE             FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 7   = 予約可能な最大値  < maxReservedValue  = maxReservedValue  TRUE              FALSE        FALSE     する    FALSE              FALSE           しない       しない
+# 8   = 予約可能な最大値  = maxReservedValue  > maxReservedValue  TRUE              FALSE        FALSE     する    TRUE               TRUE            しない       する
+# 9   = 予約可能な最大値  > maxReservedValue  > maxReservedValue  TRUE              TRUE         TRUE      しない  TRUE               TRUE            しない       する

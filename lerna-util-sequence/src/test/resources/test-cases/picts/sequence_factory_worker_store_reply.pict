@@ -1,0 +1,150 @@
+#
+# SequenceFactoryWorker が SequenceStore からの応答を受け取ったときにどのように振る舞うかケースを洗い出します
+# InitialSequenceReserved の応答はここでは考慮しません。
+# 初期化が完了するまでの間は採番が実行されず、SequenceFactoryWorker の状態変化も少ないため
+# 既存のテストケースで十分な品質が確保できていると考えたからです。
+# 既に SequenceFactoryWorker が初期化済みであるという前提のもとでテストケースを洗い出します。
+#
+# 書き方: https://github.com/Microsoft/pict/blob/main/doc/pict.md
+#
+##################################################
+# 条件
+##################################################
+
+# 返信を受け取る前の isEmpty
+isEmpty: TRUE, FALSE
+
+# 返信を受け取る前の isOverflow
+isOverflow: TRUE, FALSE
+
+# 受け取った返信
+msg: SequenceReserved, ReservationFailed, SequenceReset
+
+# 受け取った返信の maxReservedValue
+# ReservationFailed には maxReservedValue がないので NaN を使う
+msg.maxReservedValue: > ctx.maxReservedValue, = ctx.maxReservedValue, < ctx.maxReservedValue, NaN
+
+##################################################
+# 結果
+##################################################
+
+# 返信を受け取った後の SequenceContext の状態
+
+@received.isEmpty: <isEmpty>
+
+# 返信の直後に GenerateSequence を受け取ったときの振る舞い
+
+@採番: できる, できない
+
+##################################################
+# 条件の制約
+##################################################
+
+# msg.maxReservedValue
+
+# msg.maxReservedValue = NaN は ReservationFailed のときだけ
+IF [msg] = "ReservationFailed"
+THEN [msg.maxReservedValue] = "NaN"
+ELSE [msg.maxReservedValue] <> "NaN";
+
+# SequenceStore のコマンドに対する応答順序が前後することはないため、
+# msg.maxReservedValue < ctx.maxReservedValue となるメッセージが届くことはない
+IF [msg] = "SequenceReserved"
+THEN [msg.maxReservedValue] <> "< ctx.maxReservedValue";
+
+# 採番値リセットで ctx.maxReservedValue よりも大きい maxReservedValue が予約されることはない
+IF [msg] = "SequenceReset"
+THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
+
+# オーバフローしているときに、それよりも大きい採番値が予約されることはない
+IF [isOverflow] = "TRUE"
+THEN [msg.maxReservedValue] <> "> ctx.maxReservedValue";
+
+# オーバーフローしていない状態で msg.maxReservedValue < ctx.maxReservedValue となる SequenceReset が返ってくることは、
+# SequenceStore へのコマンドに対する応答が返ってくる順序が前後しない限りはない
+# 現在の実装では、コマンドを送った順番どおりに SequenceStore から応答が返ってくる
+IF [isOverflow] = "FALSE" AND [msg] = "SequenceReset"
+THEN [msg.maxReservedValue] <> "< ctx.maxReservedValue";
+
+# isEmpty
+
+# オーバフローしているということは採番値がないことと同義
+IF [isOverflow] = "TRUE"
+THEN [isEmpty] = "TRUE";
+
+# isOverflow
+
+##################################################
+# 結果の条件
+##################################################
+
+# @received.isEmpty
+
+# 予約成功
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND [msg] = "SequenceReserved" AND [msg.maxReservedValue] = "> ctx.maxReservedValue"
+THEN [@received.isEmpty] = "FALSE";
+
+# 予約未成功
+IF [isOverflow] = "FALSE" AND [isEmpty] = "TRUE" AND [msg] = "ReservationFailed"
+THEN [@received.isEmpty] = "TRUE";
+
+# 予約応答の重複（予約をリトライした場合に発生する可能性がある）
+IF [msg] = "SequenceReserved" AND [msg.maxReservedValue] = "= ctx.maxReservedValue"
+THEN [@received.isEmpty] = [isEmpty];
+
+# リセット成功
+# msg.maxReservedValue = ctx.maxReservedValue となるケースは通常考えにくいが、
+# 1回目の予約で上限ギリギリまで予約してしまうような設定をしていると発生しうる（全採番値を通して 1 回しか予約が発生しないケース）
+IF [isOverflow] = "TRUE" AND [msg] = "SequenceReset" AND ([msg.maxReservedValue] = "< ctx.maxReservedValue" OR [msg.maxReservedValue] = "= ctx.maxReservedValue")
+THEN [@received.isEmpty] = "FALSE";
+
+# リセット未成功
+IF [isOverflow] = "TRUE" AND [msg] = "ReservationFailed"
+THEN [@received.isEmpty] = "TRUE";
+
+# リセット応答の重複（リセットリトライした場合に発生する可能性がある）
+IF [isOverflow] = "FALSE" AND [msg] = "SequenceReset"
+THEN [@received.isEmpty] = [isEmpty];
+
+# 採番せずに枯渇することはない
+IF [isEmpty] = "FALSE"
+THEN [@received.isEmpty] = "FALSE";
+
+# @採番
+
+# 採番値が枯渇していないときだけ採番する
+IF [@received.isEmpty] = "TRUE"
+THEN [@採番] = "できない"
+ELSE [@採番] = "できる";
+
+##################### OUTPUT #####################
+# 全組み合わせ網羅ケース:
+# No  isEmpty  isOverflow  msg                msg.maxReservedValue    @received.isEmpty  @採番
+# 1   FALSE    FALSE       ReservationFailed  NaN                     FALSE              できる
+# 2   FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  FALSE              できる
+# 3   FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
+# 4   FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE              できる
+# 5   TRUE     FALSE       ReservationFailed  NaN                     TRUE               できない
+# 6   TRUE     FALSE       SequenceReserved   = ctx.maxReservedValue  TRUE               できない
+# 7   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
+# 8   TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE               できない
+# 9   TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
+# 10  TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
+# 11  TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  FALSE              できる
+# 12  TRUE     TRUE        SequenceReset      = ctx.maxReservedValue  FALSE              できる
+#
+# 条件重複ケース（存在する場合は「結果の条件」の定義に漏れがある）:
+# 重複ID  No  isEmpty  isOverflow  msg  msg.maxReservedValue  @received.isEmpty  @採番
+#
+# オールペア（2因子間網羅）ケース：
+# No  isEmpty  isOverflow  msg                msg.maxReservedValue    @received.isEmpty  @採番
+# 1   FALSE    FALSE       ReservationFailed  NaN                     FALSE              できる
+# 2   FALSE    FALSE       SequenceReserved   = ctx.maxReservedValue  FALSE              できる
+# 3   FALSE    FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
+# 4   FALSE    FALSE       SequenceReset      = ctx.maxReservedValue  FALSE              できる
+# 5   TRUE     FALSE       ReservationFailed  NaN                     TRUE               できない
+# 6   TRUE     FALSE       SequenceReserved   > ctx.maxReservedValue  FALSE              できる
+# 7   TRUE     FALSE       SequenceReset      = ctx.maxReservedValue  TRUE               できない
+# 8   TRUE     TRUE        ReservationFailed  NaN                     TRUE               できない
+# 9   TRUE     TRUE        SequenceReserved   = ctx.maxReservedValue  TRUE               できない
+# 10  TRUE     TRUE        SequenceReset      < ctx.maxReservedValue  FALSE              できる

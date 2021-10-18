@@ -263,6 +263,7 @@ lazy val lernaTests = lernaModule("lerna-tests")
     libraryDependencies ++= Seq(
       TestDependencies.Expecty.expecty,
       Dependencies.Akka.testKit,
+      Dependencies.Logback.classic,
     ),
   )
 
