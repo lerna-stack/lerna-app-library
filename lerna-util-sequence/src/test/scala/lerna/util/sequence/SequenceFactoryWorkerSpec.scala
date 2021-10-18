@@ -1041,7 +1041,7 @@ class SequenceFactoryWorkerSpec
         }
 
         {
-          // 前提条件を確認: msg == ReservationFailed, msg.maxReservedValue == NaN
+          // 前提条件: msg == ReservationFailed, msg.maxReservedValue == NaN
           val reserveSequence = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
           reserveSequence.replyTo ! SequenceStore.ReservationFailed
           storeProbe.expectNoMessage()
@@ -1134,7 +1134,7 @@ class SequenceFactoryWorkerSpec
         }
 
         {
-          // 前提条件を確認: msg == SequenceReserved, msg.maxReservedValue > ctx.maxReservedValue
+          // 前提条件: msg == SequenceReserved, msg.maxReservedValue > ctx.maxReservedValue
           val reserveSequence = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
           expect(replySequenceReserved(reserveSequence).maxReservedValue > maxReservedValue)
         }
@@ -1224,7 +1224,7 @@ class SequenceFactoryWorkerSpec
         }
 
         {
-          // 前提条件を確認: msg == ReservationFailed, msg.maxReservedValue == NaN
+          // 前提条件: msg == ReservationFailed, msg.maxReservedValue == NaN
           val reserveSequence = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
           reserveSequence.replyTo ! SequenceStore.ReservationFailed
           storeProbe.expectNoMessage()
@@ -1312,7 +1312,7 @@ class SequenceFactoryWorkerSpec
         }
 
         {
-          // 前提条件を確認: msg == SequenceReserved, msg.maxReservedValue > ctx.maxReservedValue
+          // 前提条件: msg == SequenceReserved, msg.maxReservedValue > ctx.maxReservedValue
           val reserveSequence = storeProbe.expectMessageType[SequenceStore.ReserveSequence]
           expect(replySequenceReserved(reserveSequence).maxReservedValue > maxReservedValue)
         }
@@ -1411,7 +1411,7 @@ class SequenceFactoryWorkerSpec
         }
 
         {
-          // 前提条件を確認: msg == ReservationFailed, msg.maxReservedValue == NaN
+          // 前提条件: msg == ReservationFailed, msg.maxReservedValue == NaN
           val reserveSequence = storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
           reserveSequence.replyTo ! SequenceStore.ReservationFailed
           storeProbe.expectNoMessage()
