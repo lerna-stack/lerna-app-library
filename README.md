@@ -1,5 +1,7 @@
 # lerna-app-library
 
+[![Coverage Status](https://coveralls.io/repos/github/lerna-stack/lerna-app-library/badge.svg?branch=main)](https://coveralls.io/github/lerna-stack/lerna-app-library?branch=main)
+
 A library that is useful for building applications that run on Lerna Stack.
 
 ## Modules
