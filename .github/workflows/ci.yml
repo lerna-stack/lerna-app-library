@@ -73,7 +73,7 @@ jobs:
         run: sbt +coverageReport
 
       - name: Upload coverage data to Coveralls
-        run: sbt +coverageAggregate coveralls
+        run: sbt coverageAggregate coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
