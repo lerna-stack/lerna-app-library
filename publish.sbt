@@ -2,12 +2,6 @@ ThisBuild / organization := "com.lerna-stack"
 ThisBuild / organizationName := "Lerna Project"
 ThisBuild / organizationHomepage := Some(url("https://lerna-stack.github.io/"))
 
-ThisBuild / scmInfo := Some(
-  ScmInfo(
-    url("https://github.com/lerna-stack/lerna-app-library"),
-    "scm:git@github.com:lerna-stack/lerna-app-library.git",
-  ),
-)
 ThisBuild / developers := List(
   Developer(
     id = "lerna",
@@ -25,9 +19,3 @@ ThisBuild / homepage := Some(url("https://github.com/lerna-stack/lerna-app-libra
 ThisBuild / pomIncludeRepository := { _ =>
   false
 }
-ThisBuild / publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-ThisBuild / publishMavenStyle := true
