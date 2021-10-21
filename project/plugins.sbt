@@ -19,8 +19,7 @@ addSbtPlugin("com.eed3si9n"                      % "sbt-unidoc"       % "0.4.3")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"         % "2.2.16")
 
 // publish jar
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "2.0")
-addSbtPlugin("com.jsuereth"   % "sbt-pgp"      % "2.0.1")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.9")
 
 // Compatibility check
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.9.2")
