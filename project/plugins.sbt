@@ -23,4 +23,3 @@ addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.9")
 
 // Compatibility check
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.9.2")
-addSbtPlugin("com.dwijnand" % "sbt-dynver"      % "4.1.1")
