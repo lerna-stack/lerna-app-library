@@ -51,12 +51,11 @@ Create a release from the following URL:
 
 https://github.com/lerna-stack/lerna-app-library/releases/new
 
-**Template:**
-```markdown
-See [CHANGELOG.md] for details.
-
-[CHANGELOG.md]: https://github.com/lerna-stack/lerna-app-library/blob/main/CHANGELOG.md#vNNN---YYYY-MM-DD <!-- write an anchor for the release version -->
-```
-
-**Example:**
-![](img/create-a-release.png)
+- **Choose a tag**: select the tag you created 
+- **Release title**: same as the tag
+- **Describe this release**:
+    ```markdown
+    See [CHANGELOG.md] for details.
+    
+    [CHANGELOG.md]: https://github.com/lerna-stack/lerna-app-library/blob/main/CHANGELOG.md#vNNN---YYYY-MM-DD <!-- write an anchor for the release version -->
+    ```
