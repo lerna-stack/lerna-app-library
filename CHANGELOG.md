@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.0...main
 
+### Fixed
+- `lerna-util-sequence`
+  - `logback.xml` is not loaded when `lerna-util-seuquence` is in dependencies [#77](https://github.com/lerna-stack/lerna-app-library/issues/77)
+
 ## [v3.0.0] - 2021-10-22
 [v3.0.0]: https://github.com/lerna-stack/lerna-app-library/compare/v2.0.0...v3.0.0
 
