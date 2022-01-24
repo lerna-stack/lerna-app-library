@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <conversionRule conversionWord="msg" converterClass="lerna.log.logback.converter.OneLineEventConverter" />
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date{HH:mm:ss.SSS}\t%-5level\t%logger\t%X{akkaSource:--}\t%X{traceId:--}\t%X{tenantId:--}\t%msg%xEx%nopex%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger level="INFO" name="akka" />
+    <logger level="DEBUG" name="lerna.util.sequence" />
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
