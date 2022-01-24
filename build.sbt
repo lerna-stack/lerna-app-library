@@ -52,8 +52,9 @@ lazy val `root` = (project in file("."))
         // forkプロセスのstdoutをこのプロセスのstdout,stderrをこのプロセスのstderrに転送する
         // デフォルトのLoggedOutputでは、airframeやkamonが標準エラーに出力するログが[error]とプリフィクスがつき、紛らわしいためです。
         outputStrategy := Some(StdoutOutput),
-        mimaPreviousArtifacts := Set.empty, // default
-        mimaReportSignatureProblems := true,// check also generic parameters
+        mimaPreviousArtifacts := Set.empty,  // default
+        mimaReportSignatureProblems := true, // check also generic parameters
+        dynverSeparator := "-",              // For more compatible with other tools
       ),
     ),
   )
