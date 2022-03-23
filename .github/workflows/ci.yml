@@ -59,11 +59,11 @@ jobs:
         run: docker-compose up --build -d cassandra
 
       - name: Run tests
-        continue-on-error: true # results are reported by action-junit-report
         run: sbt coverage +test
 
       - name: Publish test report
         uses: mikepenz/action-junit-report@v2
+        if: ${{ always() }}
         with:
           check_name: ScalaTest Report (Java ${{ matrix.java }})
           report_paths: 'lerna-*/target/scala-*/test-reports/TEST-*.xml'
