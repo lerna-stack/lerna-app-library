@@ -8,10 +8,17 @@ import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 import org.scalatest.BeforeAndAfterEach
 
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.compat.java8.OptionConverters._
 
 object CassandraStatementsSpec {
+
+  @nowarn
+  private val throwsException: Int = {
+    throw new RuntimeException("initialization exception for some reasons")
+    1
+  }
 
   private val tenant: Tenant = new Tenant {
     override def id: String = "example"
