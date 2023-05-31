@@ -82,13 +82,13 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
       }
 
     /** 追加で予約可能なシーケンスの数 */
-    def freeAmount(implicit config: SequenceConfig): Int =
-      Math.min(
-        // 予約数制限（reservationAmount）の中で採番可能なシーケンスの数
-        (config.reservationAmount - remainAmount).toInt,
+    def freeAmount(implicit config: SequenceConfig): BigInt = {
+      // 予約数制限（reservationAmount）の中で採番可能なシーケンスの数
+      (config.reservationAmount - remainAmount).min(
         // 最大シーケンス番号（maxSequenceValue）までの間で採番可能なシーケンスの数
-        ((config.maxSequenceValue - maxReservedValue) / config.incrementStep).toInt,
+        (config.maxSequenceValue - maxReservedValue) / config.incrementStep,
       )
+    }
 
     /** 発行できるシーケンスの最大値を超えている */
     def isOverflow(implicit config: SequenceConfig): Boolean =
@@ -239,7 +239,7 @@ private[sequence] final class SequenceFactoryWorker(
     }
   }
 
-  private[this] def reserve(sequenceContext: SequenceContext, amount: Int): Unit = {
+  private[this] def reserve(sequenceContext: SequenceContext, amount: BigInt): Unit = {
     logger.info(
       "Reserving sequence: remain {}, add {}, current max reserved: {}",
       sequenceContext.remainAmount,

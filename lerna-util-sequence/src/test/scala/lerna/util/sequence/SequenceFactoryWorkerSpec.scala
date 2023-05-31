@@ -101,7 +101,7 @@ class SequenceFactoryWorkerSpec
       inside(storeProbe.receiveMessage()) {
         case result: SequenceStore.ReserveSequence =>
           expect(result.maxReservedValue === BigInt(13))
-          expect(result.reservationAmount === 1) // 設定された reservationAmount - 消費済みの採番数
+          expect(result.reservationAmount === BigInt(1)) // 設定された reservationAmount - 消費済みの採番数
           expect(result.sequenceSubId === sequenceSubId)
           result.replyTo ! SequenceStore.SequenceReserved(
             maxReservedValue = BigInt(23), // maxReservedValue + (incrementStep * reservationAmount)
@@ -162,7 +162,7 @@ class SequenceFactoryWorkerSpec
       inside(storeProbe.receiveMessage()) {
         case result: SequenceStore.ReserveSequence =>
           expect(result.maxReservedValue === BigInt(13))
-          expect(result.reservationAmount === 2)
+          expect(result.reservationAmount === BigInt(2))
           expect(result.sequenceSubId === sequenceSubId)
           result.replyTo ! SequenceStore.SequenceReserved(
             maxReservedValue = BigInt(33), // maxReservedValue + (incrementStep * (reservationAmount - 消費済みの採番数))
@@ -211,7 +211,7 @@ class SequenceFactoryWorkerSpec
       val replyTo2 = inside(storeProbe.receiveMessage()) {
         case result: SequenceStore.ReserveSequence =>
           expect(result.maxReservedValue === BigInt(3))
-          expect(result.reservationAmount === 1)
+          expect(result.reservationAmount === BigInt(1))
           expect(result.sequenceSubId === sequenceSubId)
           result.replyTo
       }
@@ -407,7 +407,7 @@ class SequenceFactoryWorkerSpec
       inside(storeProbe.receiveMessage()) {
         case reserve: SequenceStore.ReserveSequence =>
           expect(reserve.maxReservedValue === BigInt(firstValue)) // 3
-          expect(reserve.reservationAmount === reservationAmount)
+          expect(reserve.reservationAmount === BigInt(reservationAmount))
           expect(reserve.sequenceSubId === sequenceSubId)
           reserve.replyTo ! SequenceStore.SequenceReserved(maxReservedValue =
             reserve.maxReservedValue + (incrementStep * reserve.reservationAmount),

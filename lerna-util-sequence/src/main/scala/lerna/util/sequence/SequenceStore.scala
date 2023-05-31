@@ -163,7 +163,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
   }
   final case class ReserveSequence(
       maxReservedValue: BigInt,
-      reservationAmount: Int,
+      reservationAmount: BigInt,
       sequenceSubId: Option[String],
       replyTo: ActorRef[ReservationResponse],
   ) extends Command {
