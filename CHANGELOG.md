@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.1...main
 
+### Fixed
+- `lerna-util-sequence`
+  - fix overflow occurred in a `freeAmount`
+
 ## [v3.0.1] - 2022-03-24
 [v3.0.1]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.0...v3.0.1
 
