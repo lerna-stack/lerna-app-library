@@ -163,8 +163,8 @@ class CassandraSequenceFactorySpec
       val incrementStep     = config.getInt("lerna.util.sequence.max-node-id")
       val sequenceCacheSize = 11
       val maxReservedValue  = initialValue + (incrementStep * (sequenceCacheSize - 1))
-      // freeAmountの計算で利用する `最大シーケンス番号までの間で採番可能なシーケンス数` がInt型の最大値を超えるようにmaxSequenceを設定
-      val maxSequence = (BigInt(Int.MaxValue) + 1) * config.getInt("lerna.util.sequence.max-node-id") + maxReservedValue
+      // freeAmountの計算で利用する `最大シーケンス番号までの間で採番可能なシーケンス数` がLong型の最大値を超えるようにmaxSequenceを設定
+      val maxSequence = (BigInt(Long.MaxValue) + 1) * config.getInt("lerna.util.sequence.max-node-id") + maxReservedValue
 
       val sequenceFactory: SequenceFactory = new TestSequenceFactory(
         seqId = UUID.randomUUID().toString,
