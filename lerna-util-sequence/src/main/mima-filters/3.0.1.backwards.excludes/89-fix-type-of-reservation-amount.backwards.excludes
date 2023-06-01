@@ -1,0 +1,10 @@
+#
+# Package private classes: The following changes don't break the backward compatibility
+#
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceFactoryWorker#SequenceContext.freeAmount")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.reservationAmount")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.copy")
+ProblemFilters.exclude[IncompatibleResultTypeProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.copy$default$2")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.this")
+ProblemFilters.exclude[IncompatibleMethTypeProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.apply")
+ProblemFilters.exclude[IncompatibleSignatureProblem]("lerna.util.sequence.SequenceStore#ReserveSequence.unapply")

@@ -156,6 +156,31 @@ class CassandraSequenceFactorySpec
       }
     }
 
+    "maxSequenceValueが非常に大きい値の場合に`freeAmount`の計算結果がオーバーフローを発生しない" in {
+      implicit val config: Config = baseConfig
+
+      val initialValue      = config.getInt("lerna.util.sequence.node-id")
+      val incrementStep     = config.getInt("lerna.util.sequence.max-node-id")
+      val sequenceCacheSize = 11
+      val maxReservedValue  = initialValue + (incrementStep * (sequenceCacheSize - 1))
+      // freeAmountの計算で利用する `最大シーケンス番号までの間で採番可能なシーケンス数` がLong型の最大値を超えるようにmaxSequenceを設定
+      val maxSequence =
+        (BigInt(Long.MaxValue) + 1) * config.getInt("lerna.util.sequence.max-node-id") + maxReservedValue
+
+      val sequenceFactory: SequenceFactory = new TestSequenceFactory(
+        seqId = UUID.randomUUID().toString,
+        maxSequence,
+        sequenceCacheSize,
+      )
+
+      // maxReservedValue が更新されるまで採番要求をおこなう
+      val sequence: Future[List[BigInt]] = Future.traverse((1 to 12).toList) { _ => sequenceFactory.nextId() }
+
+      whenReady(sequence) { seq =>
+        expect(seq === List(1, 10, 19, 28, 37, 46, 55, 64, 73, 82, 91, 100).map(BigInt(_)))
+      }
+    }
+
     "対応テナントではない場合Future.failedになる" in {
 
       implicit val config: Config = baseConfig
