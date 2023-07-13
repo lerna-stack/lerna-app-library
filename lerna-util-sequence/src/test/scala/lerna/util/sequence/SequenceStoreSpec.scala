@@ -1,17 +1,28 @@
 package lerna.util.sequence
 
-import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.connection.{ ClosedConnectionException, HeartbeatException }
+import com.datastax.oss.driver.api.core.{
+  AllNodesFailedException,
+  ConsistencyLevel,
+  CqlSession,
+  DriverTimeoutException,
+}
 import com.datastax.oss.driver.api.core.cql.{ AsyncResultSet, Statement }
+import com.datastax.oss.driver.api.core.metadata.Node
+import com.datastax.oss.driver.api.core.servererrors._
 import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
+import java.net.InetAddress
+import java.util
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 object SequenceStoreSpec {
   private implicit val tenant: Tenant = new Tenant {
@@ -67,6 +78,10 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     def failNextExecuteAsync(cause: Throwable): Unit = {
       executeAsyncFailureRef.set(Option(cause))
     }
+  }
+
+  def generateUniqueId(): String = {
+    UUID.randomUUID().toString
   }
 
   "SequenceStore" should {
@@ -299,6 +314,41 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
+    "継続可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      // SequenceStore は継続可能な例外によって採番予約に失敗する:
+      locally {
+        val node = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
+        failNextExecuteAsync(new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false))
+      }
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      // SequenceStore は、次の採番予約を処理する:
+      eventually {
+        store ! SequenceStore.InitialReserveSequence(
+          firstValue = 1,
+          reservationAmount = 101,
+          sequenceSubId,
+          testProbe.ref,
+        )
+        testProbe.expectMessage(
+          SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+        )
+      }
+
+      testKit.stop(store)
+    }
+
     "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
       val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
 
@@ -344,9 +394,100 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
+    "継続可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      // SequenceStore は継続可能な例外によって採番予約に失敗する:
+      locally {
+        val node = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
+        failNextExecuteAsync(new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false))
+      }
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 301,
+        reservationAmount = 100,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.ReservationFailed)
+
+      // SequenceStore は、次の採番予約を処理する:
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 301,
+        reservationAmount = 100,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
+
+      testKit.stop(store)
+    }
+
   }
 
-  def generateUniqueId(): String = {
-    UUID.randomUUID().toString
+  "SequenceStore.shouldRestartToRecoverFrom" should {
+    import org.scalatest.prop.TableDrivenPropertyChecks._
+
+    "再起動しなくてよい例外には false を返す" in {
+      val exceptions = {
+        val node      = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
+        val reasonMap = Map.empty[InetAddress, Integer].asJava
+        Table(
+          "exception",
+          new UnavailableException(node, ConsistencyLevel.LOCAL_QUORUM, 2, 1),
+          new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false),
+          new WriteTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, WriteType.SIMPLE),
+          new ReadFailureException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, 2, false, reasonMap),
+          new WriteFailureException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, WriteType.SIMPLE, 2, reasonMap),
+        )
+      }
+      forAll(exceptions) { exception =>
+        assert(!SequenceStore.shouldRestartToRecoverFrom(exception))
+      }
+    }
+
+    "再起動すべき例外には true を返す" in {
+      val exceptions = {
+        val node    = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
+        val address = node.getListenAddress.get()
+        val errors: List[util.Map.Entry[Node, Throwable]] = List(
+          new util.AbstractMap.SimpleEntry(node, new RuntimeException("expected exception for test")),
+        )
+        Table(
+          "exception",
+          new ClosedConnectionException("expected exception for test"),
+          new HeartbeatException(address, "expected exception for test", new RuntimeException()),
+          new OverloadedException(node),
+          new ServerError(node, "expected exception for test"),
+          new TruncateException(node, "expected exception for test"),
+          AllNodesFailedException.fromErrors(errors.asJava),
+          new DriverTimeoutException("expected exception for test"),
+        )
+      }
+      forAll(exceptions) { exception =>
+        assert(SequenceStore.shouldRestartToRecoverFrom(exception))
+      }
+    }
+
   }
+
 }
