@@ -13,13 +13,18 @@ import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
 import lerna.util.tenant.Tenant
 
-import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 
 private[sequence] object SequenceStore extends AppTypedActorLogging {
 
-  def apply(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
+  def apply(
+      sequenceId: String,
+      nodeId: Int,
+      incrementStep: BigInt,
+      config: SequenceFactoryCassandraConfig,
+      executor: CqlStatementExecutor = CqlStatementExecutor,
+  )(implicit
       tenant: Tenant,
   ): Behavior[Command] = {
     @SuppressWarnings(Array("org.wartremover.warts.Var"))
@@ -35,6 +40,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
             context,
             buffer,
             logger,
+            executor,
           ).createBehavior()
         }
       }
@@ -219,6 +225,7 @@ private[sequence] final class SequenceStore(
     context: ActorContext[SequenceStore.Command],
     stashBuffer: StashBuffer[SequenceStore.Command],
     logger: AppLogger,
+    executor: CqlStatementExecutor,
 )(implicit tenant: Tenant) {
   require(nodeId > 0)
 
@@ -333,26 +340,35 @@ private[sequence] final class SequenceStore(
   private[this] def executeWrite[T <: Statement[T]](
       statement: Statement[T],
   )(implicit sessionContext: SessionContext): Future[Done] = {
-    import sessionContext._
-    session.executeAsync(statement.setExecutionProfileName(config.writeProfileName)).toScala.map(_ => Done)
+    implicit val session: CqlSession = sessionContext.session
+    val statementWithWriteProfileName =
+      statement.setExecutionProfileName(config.writeProfileName)
+    executor
+      .executeAsync(statementWithWriteProfileName)
+      .map(_ => Done)
   }
 
   private[this] def executeRead[T <: Statement[T]](
       statement: Statement[T],
   )(implicit sessionContext: SessionContext): Future[Option[Row]] = {
-    import sessionContext._
-    session.executeAsync(statement.setExecutionProfileName(config.readProfileName)).toScala.map { asyncResult =>
-      Option(asyncResult.one())
-    }
+    implicit val session: CqlSession = sessionContext.session
+    val statementWithReadProfileName =
+      statement.setExecutionProfileName(config.readProfileName)
+    executor
+      .executeAsync(statementWithReadProfileName)
+      .map { asyncResultSet =>
+        Option(asyncResultSet.one())
+      }
   }
 
   private[this] def prepareSession(session: CqlSession): Future[SessionPrepared] = {
+    implicit val cqSession: CqlSession = session
     for {
-      _                                  <- session.executeAsync(statements.createKeyspace).toScala
-      _                                  <- session.executeAsync(statements.useKeyspace).toScala
-      _                                  <- session.executeAsync(statements.createTable).toScala
-      selectSequenceReservationStatement <- session.prepareAsync(statements.selectSequenceReservation).toScala
-      insertSequenceReservationStatement <- session.prepareAsync(statements.insertSequenceReservation).toScala
+      _                                  <- executor.executeAsync(statements.createKeyspace)
+      _                                  <- executor.executeAsync(statements.useKeyspace)
+      _                                  <- executor.executeAsync(statements.createTable)
+      selectSequenceReservationStatement <- executor.prepareAsync(statements.selectSequenceReservation)
+      insertSequenceReservationStatement <- executor.prepareAsync(statements.insertSequenceReservation)
     } yield SessionPrepared(
       SessionContext(
         session,

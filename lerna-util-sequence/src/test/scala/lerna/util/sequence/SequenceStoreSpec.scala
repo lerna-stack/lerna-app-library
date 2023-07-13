@@ -1,13 +1,17 @@
 package lerna.util.sequence
 
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.cql.{ AsyncResultSet, Statement }
 import com.typesafe.config.ConfigFactory
 import lerna.testkit.akka.ScalaTestWithTypedActorTestKit
 import lerna.tests.LernaBaseSpec
 import lerna.util.tenant.Tenant
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
-import scala.concurrent.duration._
 
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 object SequenceStoreSpec {
   private implicit val tenant: Tenant = new Tenant {
@@ -44,6 +48,25 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
   override def afterAll(): Unit = {
     try session.close()
     finally super.afterAll()
+  }
+
+  trait CqlStatementExecutorStubFixture {
+    private val executeAsyncFailureRef = new AtomicReference[Option[Throwable]](None)
+
+    val executor: CqlStatementExecutor = new CqlStatementExecutor {
+      override def executeAsync[T <: Statement[T]](
+          statement: Statement[T],
+      )(implicit session: CqlSession): Future[AsyncResultSet] = {
+        executeAsyncFailureRef.getAndSet(None) match {
+          case Some(cause) => Future.failed(cause)
+          case None        => CqlStatementExecutor.executeAsync(statement)(session)
+        }
+      }
+    }
+
+    def failNextExecuteAsync(cause: Throwable): Unit = {
+      executeAsyncFailureRef.set(Option(cause))
+    }
   }
 
   "SequenceStore" should {
@@ -243,6 +266,84 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
 
       testKit.stop(store)
     }
+
+    "継続不可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      // SequenceStore は継続不可能な例外によってセッション準備に失敗する:
+      failNextExecuteAsync(new RuntimeException("expected exception for test"))
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      // SequenceStore は、再起動した後、次の採番予約を処理する:
+      eventually {
+        store ! SequenceStore.InitialReserveSequence(
+          firstValue = 1,
+          reservationAmount = 101,
+          sequenceSubId,
+          testProbe.ref,
+        )
+        testProbe.expectMessage(
+          SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+        )
+      }
+
+      testKit.stop(store)
+    }
+
+    "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      // SequenceStore は継続不可能な例外によって採番予約に失敗する:
+      failNextExecuteAsync(new RuntimeException("expected exception for test"))
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 301,
+        reservationAmount = 100,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.ReservationFailed)
+
+      // SequenceStore は、再起動した後、次の採番予約を処理する:
+      store ! SequenceStore.ReserveSequence(
+        maxReservedValue = 301,
+        reservationAmount = 100,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
+
+      testKit.stop(store)
+    }
+
   }
 
   def generateUniqueId(): String = {
