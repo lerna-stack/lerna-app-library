@@ -50,6 +50,7 @@ private[sequence] final class SequenceFactorySupervisor(
   private def createWorker(sequenceSubId: Option[String]): ActorRef[SequenceFactoryWorker.Command] =
     context.spawn(
       SequenceFactoryWorker.apply(
+        sequenceId = sequenceId,
         maxSequenceValue = maxSequenceValue,
         firstValue = config.firstValue,
         incrementStep = config.incrementStep,

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.2...main
 
+### Changed
+- `lerna-util-sequence`
+  - SequenceFactoryWorker includes a sequence ID and a sequence sub-ID in its log messages for diagnosis.
+    [PR#93](https://github.com/lerna-stack/lerna-app-library/pull/93)
+
 ### Fixed
 - `lerna-util-sequence`
   - SequenceStore couldn't process new sequence reservations after it recovered from a ReadTimeException, etc.
