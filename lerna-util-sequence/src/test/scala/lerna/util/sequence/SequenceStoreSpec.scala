@@ -252,36 +252,6 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store2)
     }
 
-    "障害が発生しても継続して予約できる" ignore { // FIXME: typed 化で同じ仕組みではtestできなくなった
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      store ! SequenceStore.InitialReserveSequence(
-        firstValue = 1,
-        reservationAmount = 101,
-        sequenceSubId,
-        testProbe.ref,
-      )
-      testProbe.expectMessage(
-        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
-      )
-
-      // 擬似的に障害を起こす
-      store ! ??? // Status.Failure(new RuntimeException("bang!"))
-
-      store ! SequenceStore.ReserveSequence(
-        maxReservedValue = 301,
-        reservationAmount = 100,
-        sequenceSubId,
-        testProbe.ref,
-      )
-      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
-
-      testKit.stop(store)
-    }
-
     "継続不可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
       val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
 
