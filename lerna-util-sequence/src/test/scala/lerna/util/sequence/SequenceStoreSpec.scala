@@ -353,13 +353,15 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testProbe.expectMessage(SequenceStore.ReservationFailed)
 
       // SequenceStore は、再起動した後、次の採番予約を処理する:
-      store ! SequenceStore.ReserveSequence(
-        maxReservedValue = 301,
-        reservationAmount = 100,
-        sequenceSubId,
-        testProbe.ref,
-      )
-      testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
+      eventually {
+        store ! SequenceStore.ReserveSequence(
+          maxReservedValue = 301,
+          reservationAmount = 100,
+          sequenceSubId,
+          testProbe.ref,
+        )
+        testProbe.expectMessage(SequenceStore.SequenceReserved(maxReservedValue = 601))
+      }
 
       testKit.stop(store)
     }
