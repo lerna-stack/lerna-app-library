@@ -28,6 +28,7 @@ class SequenceFactoryWorkerSpec
     override def id: String = "dummy"
   }
 
+  val sequenceId: String            = "test-sequence-id"
   val sequenceSubId: Option[String] = Option("test")
 
   "SequenceFactoryWorker" should {
@@ -37,6 +38,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = 3,
             incrementStep = 10,
@@ -68,6 +70,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = 3,
             incrementStep = 10,
@@ -122,6 +125,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = 3,
             incrementStep = 10,
@@ -183,6 +187,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = 3,
             incrementStep = 10,
@@ -230,6 +235,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = maxSequenceValue,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -278,6 +284,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -323,6 +330,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = maxSequenceValue,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -365,6 +373,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 999,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -429,6 +438,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = maxSequenceValue,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -481,6 +491,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 13,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -552,6 +563,7 @@ class SequenceFactoryWorkerSpec
       val worker = spawn(
         SequenceFactoryWorker
           .apply(
+            sequenceId,
             maxSequenceValue = 13,
             firstValue = firstValue,
             incrementStep = incrementStep,
@@ -1565,6 +1577,7 @@ class SequenceFactoryWorkerSpec
   ): ActorRef[SequenceFactoryWorker.Command] = {
     spawn(
       SequenceFactoryWorker.apply(
+        sequenceId,
         maxSequenceValue = maxSequenceValue,
         firstValue = firstValue,
         incrementStep = incrementStep,

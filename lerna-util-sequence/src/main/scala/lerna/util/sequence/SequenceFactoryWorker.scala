@@ -12,6 +12,7 @@ import scala.concurrent.duration.FiniteDuration
 private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
 
   def apply(
+      sequenceId: String,
       maxSequenceValue: BigInt,
       firstValue: BigInt,
       incrementStep: Int,
@@ -26,6 +27,7 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
         Behaviors.withStash(capacity) { buffer =>
           withLogger { logger =>
             new SequenceFactoryWorker(
+              sequenceId = sequenceId,
               maxSequenceValue = maxSequenceValue,
               firstValue = firstValue,
               incrementStep = incrementStep,
@@ -105,6 +107,7 @@ private[sequence] object SequenceFactoryWorker extends AppTypedActorLogging {
 }
 
 private[sequence] final class SequenceFactoryWorker(
+    sequenceId: String,
     maxSequenceValue: BigInt,
     firstValue: BigInt,
     incrementStep: Int,
@@ -148,7 +151,13 @@ private[sequence] final class SequenceFactoryWorker(
       sequenceStore ! SequenceStore.InitialReserveSequence(firstValue, reservationAmount, sequenceSubId, responseMapper)
       Behaviors.same
     case WrappedSequenceStoreResponse(msg: SequenceStore.InitialSequenceReserved) =>
-      logger.info("initial reserved: max:{}, initial:{}", msg.maxReservedValue, msg.initialValue)
+      logger.info(
+        "sequenceId=[{}], sequenceSubId=[{}]: initial reserved: max:{}, initial:{}",
+        sequenceId,
+        sequenceSubId.getOrElse("-"),
+        msg.maxReservedValue,
+        msg.initialValue,
+      )
       val sequenceContext: SequenceContext =
         SequenceContext(msg.maxReservedValue, nextValue = msg.initialValue)
       stashBuffer.unstashAll(prepareNextSequence(nextSequence = sequenceContext))
@@ -185,7 +194,9 @@ private[sequence] final class SequenceFactoryWorker(
     case msg: GenerateSequence =>
       // no reply
       logger.warn(
-        "Pending generate sequence because reserving sequence: current max reserved: {}, next sequence value: {}",
+        "sequenceId=[{}], sequenceSubId=[{}]: Pending generate sequence because reserving sequence: current max reserved: {}, next sequence value: {}",
+        sequenceId,
+        sequenceSubId.getOrElse("-"),
         sequenceContext.maxReservedValue,
         sequenceContext.nextValue,
       )
@@ -206,7 +217,12 @@ private[sequence] final class SequenceFactoryWorker(
       sequenceContext: SequenceContext,
   ): Behavior[Command] = {
     msg.replyTo ! SequenceGenerated(sequenceContext.nextValue, sequenceSubId)
-    logger.debug("SequenceGenerated: {}", sequenceContext.nextValue)
+    logger.debug(
+      "sequenceId=[{}], sequenceSubId=[{}]: SequenceGenerated: {}",
+      sequenceId,
+      sequenceSubId.getOrElse("-"),
+      sequenceContext.nextValue,
+    )
     prepareNextSequence(nextSequence = sequenceContext.next())
   }
 
@@ -222,6 +238,7 @@ private[sequence] final class SequenceFactoryWorker(
         empty(nextSequence)
       } else {
         val message =
+          s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.toString}]: " +
           s"freeAmount (${freeAmount.toString}) must be greater than 0 because freeAmount ≦ 0 means that the next sequence is overflow"
         logger.error(new IllegalStateException(message), message)
         Behaviors.stopped
@@ -241,7 +258,9 @@ private[sequence] final class SequenceFactoryWorker(
 
   private[this] def reserve(sequenceContext: SequenceContext, amount: BigInt): Unit = {
     logger.info(
-      "Reserving sequence: remain {}, add {}, current max reserved: {}",
+      "sequenceId=[{}], sequenceSubId=[{}]: Reserving sequence: remain {}, add {}, current max reserved: {}",
+      sequenceId,
+      sequenceSubId.getOrElse("-"),
       sequenceContext.remainAmount,
       amount,
       sequenceContext.maxReservedValue,
@@ -262,11 +281,13 @@ private[sequence] final class SequenceFactoryWorker(
       val nextSequence = sequenceContext.copy(maxReservedValue = msg.maxReservedValue)
       if (nextSequence.isOverflow) {
         val message =
+          s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.getOrElse("-")}]: " +
           s"Worker should reserve sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
         logger.error(new IllegalStateException(message), message)
         Behaviors.stopped
       } else if (nextSequence.isEmpty) {
         val message =
+          s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.getOrElse("-")}]: " +
           s"Sequence normally never dries up after reserving [${sequenceContext.toString}, ${msg.toString}]"
         logger.error(new IllegalStateException(message), message)
         Behaviors.stopped
@@ -280,6 +301,7 @@ private[sequence] final class SequenceFactoryWorker(
       // SequenceStore が予約要求した順とはことなる順番で結果を返した場合に到達する可能性があるが、
       // 現在の SequenceStore の実装では結果の順序が前後することがないので、到達しないはずのコード。
       val message =
+        s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.getOrElse("-")}]: " +
         s"Ignore the maxReservedValue since it reverts to the old value [${sequenceContext.toString}, ${msg.toString}]"
       logger.warn(new IllegalStateException(message), message)
       Behaviors.same
@@ -300,15 +322,22 @@ private[sequence] final class SequenceFactoryWorker(
       sequenceContext: SequenceContext,
   ): Behavior[Command] = {
     if (sequenceContext.isOverflow) {
-      logger.warn("reset sequence: {}", msg.maxReservedValue)
+      logger.warn(
+        "sequenceId=[{}], sequenceSubId=[{}]: reset sequence: {}",
+        sequenceId,
+        sequenceSubId.getOrElse("-"),
+        msg.maxReservedValue,
+      )
       val nextSequence = SequenceContext(msg.maxReservedValue, nextValue = firstValue)
       if (nextSequence.isOverflow) {
         val message =
+          s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.getOrElse("-")}]: " +
           s"Worker should reset sequence so that it does not overflow [${sequenceContext.toString}, ${msg.toString}]"
         logger.error(new IllegalStateException(message), message)
         Behaviors.stopped
       } else if (nextSequence.isEmpty) {
         val message =
+          s"sequenceId=[$sequenceId], sequenceSubId=[${sequenceSubId.getOrElse("-")}]: " +
           s"Sequence normally never dries up after resetting [${sequenceContext.toString}, ${msg.toString}]"
         logger.error(new IllegalStateException(message), message)
         Behaviors.stopped
