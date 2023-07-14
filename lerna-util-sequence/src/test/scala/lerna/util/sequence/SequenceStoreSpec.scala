@@ -89,7 +89,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
   trait CqlStatementExecutorStubFixture {
     private val executeAsyncFailureRef = new AtomicReference[Option[Throwable]](None)
 
-    val executor: CqlStatementExecutor = new CqlStatementExecutor {
+    val executorStub: CqlStatementExecutor = new CqlStatementExecutor {
       override def executeAsync[T <: Statement[T]](
           statement: Statement[T],
       )(implicit session: CqlSession): Future[AsyncResultSet] = {
@@ -258,7 +258,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       // SequenceStore は継続不可能な例外によってセッション準備に失敗する:
       failNextExecuteAsync(new RuntimeException("expected exception for test"))
 
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       // SequenceStore は、再起動した後、次の採番予約を処理する:
       eventually {
@@ -283,7 +283,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
         failNextExecuteAsync(new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false))
       }
 
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       // SequenceStore は、次の採番予約を処理する:
       eventually {
@@ -302,7 +302,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続不可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       // SequenceStore が ready になっていることを確認するため:
       store ! SequenceStore.InitialReserveSequence(
@@ -342,7 +342,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       // SequenceStore が ready になっていることを確認するため:
       store ! SequenceStore.InitialReserveSequence(
@@ -383,7 +383,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -420,7 +420,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -458,7 +458,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続不可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -495,7 +495,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
 
     "継続可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new Fixture with CqlStatementExecutorStubFixture {
-      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executorStub)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
