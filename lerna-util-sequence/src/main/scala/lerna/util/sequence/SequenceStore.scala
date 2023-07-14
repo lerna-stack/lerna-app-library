@@ -44,7 +44,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
         }
       }
     }
-    Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
+    Behaviors.supervise(behavior).onFailure(SupervisorStrategy.restart)
   }
 
   sealed trait Command            extends NoSerializationVerificationNeeded
