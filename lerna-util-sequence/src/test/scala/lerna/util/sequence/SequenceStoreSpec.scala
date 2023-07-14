@@ -63,7 +63,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     finally super.afterAll()
   }
 
-  trait Fixture {
+  private trait Fixture {
     val testProbe: TestProbe[SequenceStore.ReservationResponse] =
       createTestProbe[SequenceStore.ReservationResponse]()
 
@@ -86,7 +86,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
   }
 
-  trait CqlStatementExecutorStubFixture {
+  private trait CqlStatementExecutorStubFixture {
     private val executeAsyncFailureRef = new AtomicReference[Option[Throwable]](None)
 
     val executorStub: CqlStatementExecutor = new CqlStatementExecutor {
