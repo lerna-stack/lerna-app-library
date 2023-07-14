@@ -1,5 +1,7 @@
 package lerna.util.sequence
 
+import akka.actor.testkit.typed.scaladsl.TestProbe
+import akka.actor.typed.ActorRef
 import com.datastax.oss.driver.api.core.connection.{ ClosedConnectionException, HeartbeatException }
 import com.datastax.oss.driver.api.core.{
   AllNodesFailedException,
@@ -61,6 +63,29 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     finally super.afterAll()
   }
 
+  trait Fixture {
+    val testProbe: TestProbe[SequenceStore.ReservationResponse] =
+      createTestProbe[SequenceStore.ReservationResponse]()
+
+    lazy val sequenceSubId: Option[String] = Option("test")
+    lazy val sequenceId: String            = UUID.randomUUID().toString
+
+    def spawnSequenceStore(
+        nodeId: Int,
+        incrementStep: Int,
+    ): ActorRef[SequenceStore.Command] = {
+      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig))
+    }
+
+    def spawnSequenceStore(
+        nodeId: Int,
+        incrementStep: Int,
+        executor: CqlStatementExecutor,
+    ): ActorRef[SequenceStore.Command] = {
+      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, executor))
+    }
+  }
+
   trait CqlStatementExecutorStubFixture {
     private val executeAsyncFailureRef = new AtomicReference[Option[Throwable]](None)
 
@@ -80,19 +105,10 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     }
   }
 
-  def generateUniqueId(): String = {
-    UUID.randomUUID().toString
-  }
-
   "SequenceStore" should {
 
-    val sequenceSubId = Option("test")
-
-    "最初の予約では初項（firstValue）が初期値（initialValue）となり、reservationAmount で指定した分だけの採番値が予約される" in {
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+    "最初の予約では初項（firstValue）が初期値（initialValue）となり、reservationAmount で指定した分だけの採番値が予約される" in new Fixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 3,
@@ -108,11 +124,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "reservationAmount が 1 の場合は初項（firstValue）が予約済み最大値（maxReservedValue）となる" in {
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+    "reservationAmount が 1 の場合は初項（firstValue）が予約済み最大値（maxReservedValue）となる" in new Fixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 3,
@@ -128,11 +141,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "過去すでに予約された実績があれば、次の初期値は過去実績より１つ進んだ値になる" in {
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+    "過去すでに予約された実績があれば、次の初期値は過去実績より１つ進んだ値になる" in new Fixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -159,11 +169,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "予約した採番値の最大値を maxReservedValue として返す" in {
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+    "予約した採番値の最大値を maxReservedValue として返す" in new Fixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -187,11 +194,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "リセット時は reservationAmount で指定した分だけの採番値が予約される" in {
-      val store = spawn(
-        SequenceStore.apply(sequenceId = generateUniqueId(), nodeId = 1, incrementStep = 3, cassandraConfig),
-      )
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+    "リセット時は reservationAmount で指定した分だけの採番値が予約される" in new Fixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -216,12 +220,10 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "再起動したときに保存した予約値が復元できる" in {
-      val sequenceId    = generateUniqueId()
+    "再起動したときに保存した予約値が復元できる" in new Fixture {
       val nodeId        = 1
       val incrementStep = 3
-      val store1        = spawn(SequenceStore.apply(sequenceId, nodeId, incrementStep, cassandraConfig))
-      val testProbe     = createTestProbe[SequenceStore.ReservationResponse]()
+      val store1        = spawnSequenceStore(nodeId, incrementStep)
 
       store1 ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -235,7 +237,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
 
       testKit.stop(store1)
 
-      val store2 = spawn(SequenceStore.apply(sequenceId, nodeId, incrementStep, cassandraConfig))
+      val store2 = spawnSequenceStore(nodeId, incrementStep)
 
       store2 ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -252,21 +254,11 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store2)
     }
 
-    "継続不可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
+    "継続不可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
       // SequenceStore は継続不可能な例外によってセッション準備に失敗する:
       failNextExecuteAsync(new RuntimeException("expected exception for test"))
 
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       // SequenceStore は、再起動した後、次の採番予約を処理する:
       eventually {
@@ -284,24 +276,14 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
+    "継続可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
       // SequenceStore は継続可能な例外によって採番予約に失敗する:
       locally {
         val node = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
         failNextExecuteAsync(new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false))
       }
 
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       // SequenceStore は、次の採番予約を処理する:
       eventually {
@@ -319,18 +301,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続不可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続不可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       // SequenceStore が ready になっていることを確認するため:
       store ! SequenceStore.InitialReserveSequence(
@@ -369,18 +341,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       // SequenceStore が ready になっていることを確認するため:
       store ! SequenceStore.InitialReserveSequence(
@@ -420,18 +382,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -467,18 +419,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -515,18 +457,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続不可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続不可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
@@ -562,18 +494,8 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
-    "継続可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new CqlStatementExecutorStubFixture {
-      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
-
-      val store = spawn(
-        SequenceStore(
-          sequenceId = generateUniqueId(),
-          nodeId = 1,
-          incrementStep = 3,
-          config = cassandraConfig,
-          executor = executor,
-        ),
-      )
+    "継続可能な例外によって採番リセットに失敗した後、次の採番リセットを処理する" in new Fixture with CqlStatementExecutorStubFixture {
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, executor = executor)
 
       store ! SequenceStore.InitialReserveSequence(
         firstValue = 1,
