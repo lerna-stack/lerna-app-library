@@ -319,6 +319,107 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       testKit.stop(store)
     }
 
+    "継続不可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      // SequenceStore が ready になっていることを確認するため:
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      // SequenceStore は継続不可能な例外によって初期採番予約に失敗する:
+      failNextExecuteAsync(new RuntimeException("expected exception for test"))
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.ReservationFailed)
+
+      // SequenceStore は、再起動した後、次の初期採番予約を処理する:
+      eventually {
+        store ! SequenceStore.InitialReserveSequence(
+          firstValue = 1,
+          reservationAmount = 101,
+          sequenceSubId,
+          testProbe.ref,
+        )
+        testProbe.expectMessage(
+          SequenceStore.InitialSequenceReserved(initialValue = 304, maxReservedValue = 604),
+        )
+      }
+
+      testKit.stop(store)
+    }
+
+    "継続可能な例外によって初期採番予約に失敗した後、次の初期採番予約を処理する" in new CqlStatementExecutorStubFixture {
+      val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
+
+      val store = spawn(
+        SequenceStore(
+          sequenceId = generateUniqueId(),
+          nodeId = 1,
+          incrementStep = 3,
+          config = cassandraConfig,
+          executor = executor,
+        ),
+      )
+
+      // SequenceStore が ready になっていることを確認するため:
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+      )
+
+      // SequenceStore は継続可能な例外によって初期採番予約に失敗する:
+      locally {
+        val node = session.execute("SELECT uuid() FROM system.local;").getExecutionInfo.getCoordinator
+        failNextExecuteAsync(new ReadTimeoutException(node, ConsistencyLevel.LOCAL_QUORUM, 1, 2, false))
+      }
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(SequenceStore.ReservationFailed)
+
+      // SequenceStore は、次の初期採番予約を処理する:
+      store ! SequenceStore.InitialReserveSequence(
+        firstValue = 1,
+        reservationAmount = 101,
+        sequenceSubId,
+        testProbe.ref,
+      )
+      testProbe.expectMessage(
+        SequenceStore.InitialSequenceReserved(initialValue = 304, maxReservedValue = 604),
+      )
+
+      testKit.stop(store)
+    }
+
     "継続不可能な例外によって採番予約に失敗した後、次の採番予約を処理する" in new CqlStatementExecutorStubFixture {
       val testProbe = createTestProbe[SequenceStore.ReservationResponse]()
 
