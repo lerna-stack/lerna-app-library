@@ -13,17 +13,21 @@ import lerna.log.{ AppLogger, AppTypedActorLogging }
 import lerna.util.lang.Equals._
 import lerna.util.tenant.Tenant
 
-import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 
 private[sequence] object SequenceStore extends AppTypedActorLogging {
 
-  def apply(sequenceId: String, nodeId: Int, incrementStep: BigInt, config: SequenceFactoryCassandraConfig)(implicit
+  def apply(
+      sequenceId: String,
+      nodeId: Int,
+      incrementStep: BigInt,
+      config: SequenceFactoryCassandraConfig,
+      executor: CqlStatementExecutor = CqlStatementExecutor,
+  )(implicit
       tenant: Tenant,
   ): Behavior[Command] = {
-    @SuppressWarnings(Array("org.wartremover.warts.Var"))
-    var behavior: Behavior[Command] = Behaviors.setup { context =>
+    val behavior: Behavior[Command] = Behaviors.setup { context =>
       val capacity = context.system.settings.config.getInt("lerna.util.sequence.store.stash-capacity")
       Behaviors.withStash(capacity) { buffer =>
         withLogger { logger =>
@@ -35,120 +39,12 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
             context,
             buffer,
             logger,
+            executor,
           ).createBehavior()
         }
       }
     }
-
-    //
-    // SupervisorStrategy
-    // 基本方針として、Cassandra に再接続しなくても回復できそうな例外は  resume する。
-    // それ以外の例外は、Cassandra に再接続するため restart する。
-    //
-    // 発生しうる例外は、次のリンクから確認できる。
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#retries
-    //
-    // DefaultRetryPolicy は、次のリンクから確認できる。
-    // https://github.com/datastax/java-driver/blob/4.6.0/core/src/main/java/com/datastax/oss/driver/internal/core/retry/DefaultRetryPolicy.java
-    //
-    // 最終的に Exception は restart するため 一部コードは冗長であるが、
-    // エラー発生状況を明示することを目的としてそのまま記載している。
-    //
-
-    // Consistency Level を満たせる十分な Replica が存在しない。
-    // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてもよい。
-    //
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-unavailable
-    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/UnavailableException.html
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[UnavailableException](SupervisorStrategy.resume)
-
-    // 一時的にレプリカが処理できなくなっている。
-    // Cassandra サイドで回復することを期待する。Cassandra に再接続しなくてもよい。
-    //
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-read-timeout
-    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadTimeoutException.html
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[ReadTimeoutException](SupervisorStrategy.resume)
-
-    // 一時的にレプリカが処理できなくなっている。
-    // Cassandra サイドで回復することを期待する。Cassandra に再接続しなくてもよい。
-    //
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-write-timeout
-    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteTimeoutException.html
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[WriteTimeoutException](SupervisorStrategy.resume)
-
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-request-aborted
-    //
-    // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/ClosedConnectionException.html
-    // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/HeartbeatException.html
-    //
-    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
-    // DefaultRetryPolicy を使っている場合は、ドライバにて次ノードにリトライする。
-    // すべてのノードが応答しない場合、AllNodesFailedException が発生する。
-    // (AllNodeFailedExceptionは、このメソッドの下部で処理する)
-    //
-    // クエリが冪等でない場合、RetryPolicyはバイパスされ、これらの例外が発生する。
-    //
-    // これらの例外は再接続する方が恐らく安全である。
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[ClosedConnectionException](SupervisorStrategy.restart)
-    behavior = Behaviors.supervise(behavior).onFailure[HeartbeatException](SupervisorStrategy.restart)
-
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
-    //
-    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/OverloadedException.html
-    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ServerError.html
-    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/TruncateException.html
-    //
-    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
-    // DefaultRetryPolicy を使っている場合は、ドライバにて次ノードにリトライする。
-    // すべてのノードが応答しない場合、AllNodesFailedException が発生する。
-    // (AllNodeFailedExceptionは、このメソッドの下部で処理する)
-    //
-    // クエリが冪等でない場合、RetryPolicyはバイパスされ、これらの例外が発生する。
-    //
-    // Coordinator とは通信できているため、恐らく Cassandra に再接続する必要はない。
-    // ただし、過負荷やサーバでエラーが発生している状況のため、より安全な方法をとった方がよい。
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[OverloadedException](SupervisorStrategy.restart)
-    behavior = Behaviors.supervise(behavior).onFailure[ServerError](SupervisorStrategy.restart)
-    behavior = Behaviors.supervise(behavior).onFailure[TruncateException](SupervisorStrategy.restart)
-
-    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
-    //
-    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadFailureException.html
-    //  - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteFailureException.html
-    //
-    // クエリが冪等である場合、ドライバの RetryPolicy によって処理される。
-    // DefaultRetryPolicy を使っている場合は、これらの例外が発生する。クエリが冪等でない場合も、これらの例外が発生する。
-    // 他の RetryPolicy を使用した場合は、その実装に依存した例外が発生する可能性があるため注意すること。
-    //
-    // 一部 Replica がエラーを返しているような場合に発生することがある。
-    // Coordinator とは通信できているため、Cassandra に再接続する必要はない。
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[ReadFailureException](SupervisorStrategy.resume)
-    behavior = Behaviors.supervise(behavior).onFailure[WriteFailureException](SupervisorStrategy.resume)
-
-    // すべての Coordinator に対してクエリが失敗した。
-    // 自身が孤立しているか、Cassandra に災害 が発生している可能性がある。
-    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/AllNodesFailedException.html
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[AllNodesFailedException](SupervisorStrategy.restart)
-
-    // ドライバでタイムアウトが発生した。
-    // Coordinator が全く反応していない場合に発生する。
-    // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/DriverTimeoutException.html
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[DriverTimeoutException](SupervisorStrategy.restart)
-
-    //
-    // その他の例外は restart して Cassandra に再接続することで、回復することを期待する
-    //
-    behavior = Behaviors.supervise(behavior).onFailure[Exception](SupervisorStrategy.restart)
-
-    behavior
+    Behaviors.supervise(behavior).onFailure(SupervisorStrategy.restart)
   }
 
   sealed trait Command            extends NoSerializationVerificationNeeded
@@ -209,6 +105,82 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
       selectSequenceReservationStatement: PreparedStatement,
       insertSequenceReservationStatement: PreparedStatement,
   )
+
+  /** Returns true if a SequenceStore should restart to recover from the given exception. */
+  def shouldRestartToRecoverFrom(exception: Throwable): Boolean = {
+    // 基本方針として、Cassandra に再接続しなくても回復できるだろう例外は自身を再起動しない。
+    // それ以外の例外は、Cassandra に再接続するために自身を再起動する。
+    //
+    // 発生しうる例外は次のリンクから確認できる:
+    // https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#retries
+    //
+    // DefaultRetryPolicy は次のリンクから確認できる:
+    // https://github.com/datastax/java-driver/blob/4.6.0/core/src/main/java/com/datastax/oss/driver/internal/core/retry/DefaultRetryPolicy.java
+    //
+    // 例外発生状況を明示することを目的として、一部コードは冗長な記載である:
+    //
+    exception match {
+      case _: UnavailableException =>
+        // Consistency Level を満たせる十分な Replica が存在しなかった。
+        // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてよい。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-unavailable
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/UnavailableException.html
+        false
+      case _: ReadTimeoutException =>
+        // レプリカが読み込みリクエストに時間内に応答しなかった。
+        // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてよい。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-read-timeout
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadTimeoutException.html
+        false
+      case _: WriteTimeoutException =>
+        // レプリカが書き込みリクエストに時間内に応答しなかった。
+        // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてよい。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-write-timeout
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteTimeoutException.html
+        false
+      case _: ClosedConnectionException | _: HeartbeatException =>
+        // ClosedConnectionException: コネクションが外部要因で閉じられた。
+        // HeartbeatException: ハートビートクエリに失敗した。
+        // 安全のため再起動する。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-request-aborted
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/ClosedConnectionException.html
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/connection/HeartbeatException.html
+        true
+      case _: OverloadedException | _: ServerError | _: TruncateException =>
+        // OverloadedException: コーディネータが過負荷であった。
+        // ServerError: サーバが内部エラーを報告した。
+        // TruncateException: truncate 操作でエラーが発生した。
+        // 安全のため再起動する。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/OverloadedException.html
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ServerError.html
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/TruncateException.html
+        true
+      case _: ReadFailureException | _: WriteFailureException =>
+        // ReadFailureException: レプリカが読み込みリクエストにタイムアウト以外のエラーを応答した。
+        // WriteFailureException: レプリカが書き込みリクエストにタイムアウト以外のエラーを応答した。
+        // Cassandra クラスタが回復することを期待する。Cassandra に再接続しなくてよい。
+        // - https://docs.datastax.com/en/developer/java-driver/4.6/manual/core/retries/#on-error-response
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/ReadFailureException.html
+        // - https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/servererrors/WriteFailureException.html
+        false
+      case _: AllNodesFailedException =>
+        // すべてのコーディネータに対してクエリが失敗した。
+        // 自身が孤立しているか、Cassandra で災害が発生している可能性がある。
+        // 安全のため再起動する。
+        // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/AllNodesFailedException.html
+        true
+      case _: DriverTimeoutException =>
+        // ドライバ要求でタイムアウトが発生した。
+        // https://docs.datastax.com/en/drivers/java/4.6/com/datastax/oss/driver/api/core/DriverTimeoutException.html
+        // 安全のため再起動する。
+        true
+      case _ =>
+        // その他の例外は再起動して回復することを期待する。
+        true
+    }
+  }
+
 }
 
 private[sequence] final class SequenceStore(
@@ -219,6 +191,7 @@ private[sequence] final class SequenceStore(
     context: ActorContext[SequenceStore.Command],
     stashBuffer: StashBuffer[SequenceStore.Command],
     logger: AppLogger,
+    executor: CqlStatementExecutor,
 )(implicit tenant: Tenant) {
   require(nodeId > 0)
 
@@ -265,8 +238,9 @@ private[sequence] final class SequenceStore(
     case SessionPrepared(sessionContext) =>
       logger.info("Cassandra session was ready (sequenceId: {}, nodeId: {})", sequenceId, nodeId)
       stashBuffer.unstashAll(ready(sessionContext))
-
-    case SessionFailed(throwable)     => throw throwable
+    case SessionFailed(throwable) =>
+      // TODO 一部の例外は再起動せずに処理を再試行する
+      throw throwable // to restart
     case _: InternalReservationResult => Behaviors.unhandled
   }
 
@@ -296,6 +270,7 @@ private[sequence] final class SequenceStore(
       case _: InternalReservationResult => Behaviors.unhandled
     }.receiveSignal(close(sessionContext.session))
 
+  @SuppressWarnings(Array("lerna.warts.CyclomaticComplexity"))
   private[this] def reserving(replyTo: ActorRef[ReservationResponse])(implicit sessionContext: SessionContext) =
     Behaviors
       .receiveMessage[Command] {
@@ -319,7 +294,19 @@ private[sequence] final class SequenceStore(
           stashBuffer.unstashAll(ready)
         case InternalReservationFailed(exception) =>
           replyTo ! ReservationFailed
-          throw exception
+          if (shouldRestartToRecoverFrom(exception)) {
+            throw exception // to restart
+          } else {
+            // TODO 失敗した処理の情報(initialReserve,reserve,rest)を出力する
+            logger.info(
+              "sequenceId=[{}], nodeId=[{}]: Recovering from InternalReservationFailed: [{}: {}]",
+              sequenceId,
+              nodeId,
+              exception.getClass.getCanonicalName,
+              exception.getMessage,
+            )
+            stashBuffer.unstashAll(ready)
+          }
         case OpenSession      => Behaviors.unhandled
         case _: SessionResult => Behaviors.unhandled
       }.receiveSignal(close(sessionContext.session))
@@ -333,26 +320,35 @@ private[sequence] final class SequenceStore(
   private[this] def executeWrite[T <: Statement[T]](
       statement: Statement[T],
   )(implicit sessionContext: SessionContext): Future[Done] = {
-    import sessionContext._
-    session.executeAsync(statement.setExecutionProfileName(config.writeProfileName)).toScala.map(_ => Done)
+    implicit val session: CqlSession = sessionContext.session
+    val statementWithWriteProfileName =
+      statement.setExecutionProfileName(config.writeProfileName)
+    executor
+      .executeAsync(statementWithWriteProfileName)
+      .map(_ => Done)
   }
 
   private[this] def executeRead[T <: Statement[T]](
       statement: Statement[T],
   )(implicit sessionContext: SessionContext): Future[Option[Row]] = {
-    import sessionContext._
-    session.executeAsync(statement.setExecutionProfileName(config.readProfileName)).toScala.map { asyncResult =>
-      Option(asyncResult.one())
-    }
+    implicit val session: CqlSession = sessionContext.session
+    val statementWithReadProfileName =
+      statement.setExecutionProfileName(config.readProfileName)
+    executor
+      .executeAsync(statementWithReadProfileName)
+      .map { asyncResultSet =>
+        Option(asyncResultSet.one())
+      }
   }
 
   private[this] def prepareSession(session: CqlSession): Future[SessionPrepared] = {
+    implicit val cqSession: CqlSession = session
     for {
-      _                                  <- session.executeAsync(statements.createKeyspace).toScala
-      _                                  <- session.executeAsync(statements.useKeyspace).toScala
-      _                                  <- session.executeAsync(statements.createTable).toScala
-      selectSequenceReservationStatement <- session.prepareAsync(statements.selectSequenceReservation).toScala
-      insertSequenceReservationStatement <- session.prepareAsync(statements.insertSequenceReservation).toScala
+      _                                  <- executor.executeAsync(statements.createKeyspace)
+      _                                  <- executor.executeAsync(statements.useKeyspace)
+      _                                  <- executor.executeAsync(statements.createTable)
+      selectSequenceReservationStatement <- executor.prepareAsync(statements.selectSequenceReservation)
+      insertSequenceReservationStatement <- executor.prepareAsync(statements.insertSequenceReservation)
     } yield SessionPrepared(
       SessionContext(
         session,

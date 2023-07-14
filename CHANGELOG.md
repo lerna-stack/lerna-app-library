@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 [Unreleased]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.2...main
 
+### Fixed
+- `lerna-util-sequence`
+  - SequenceStore couldn't process new sequence reservations after it recovered from a ReadTimeException, etc.
+    [#91](https://github.com/lerna-stack/lerna-app-library/issues/91),
+    [PR#92](https://github.com/lerna-stack/lerna-app-library/pull/92)
+
 ## [v3.0.2] - 2023-06-19
 [v3.0.2]: https://github.com/lerna-stack/lerna-app-library/compare/v3.0.1...v3.0.2
 
