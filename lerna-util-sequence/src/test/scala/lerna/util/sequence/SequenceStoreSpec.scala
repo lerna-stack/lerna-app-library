@@ -1,5 +1,6 @@
 package lerna.util.sequence
 
+import akka.actor.ClassicActorSystemProvider
 import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.ActorRef
 import com.datastax.oss.driver.api.core.connection.{ ClosedConnectionException, HeartbeatException }
@@ -82,7 +83,7 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
         incrementStep: Int,
         executor: CqlStatementExecutor,
     ): ActorRef[SequenceStore.Command] = {
-      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, executor))
+      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, executor = executor))
     }
   }
 

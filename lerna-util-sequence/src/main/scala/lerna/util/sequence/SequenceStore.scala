@@ -23,6 +23,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
       nodeId: Int,
       incrementStep: BigInt,
       config: SequenceFactoryCassandraConfig,
+      cqlSessionProvider: CqlSessionProvider = CqlSessionProvider,
       executor: CqlStatementExecutor = CqlStatementExecutor,
   )(implicit
       tenant: Tenant,
@@ -39,6 +40,7 @@ private[sequence] object SequenceStore extends AppTypedActorLogging {
             context,
             buffer,
             logger,
+            cqlSessionProvider,
             executor,
           ).createBehavior()
         }
@@ -191,6 +193,7 @@ private[sequence] final class SequenceStore(
     context: ActorContext[SequenceStore.Command],
     stashBuffer: StashBuffer[SequenceStore.Command],
     logger: AppLogger,
+    cqlSessionProvider: CqlSessionProvider,
     executor: CqlStatementExecutor,
 )(implicit tenant: Tenant) {
   require(nodeId > 0)
@@ -312,7 +315,7 @@ private[sequence] final class SequenceStore(
       }.receiveSignal(close(sessionContext.session))
 
   private[this] def openSession(): Future[SessionOpened] = {
-    CqlSessionProvider
+    cqlSessionProvider
       .connect(context.system, config)
       .map(SessionOpened.apply)
   }
