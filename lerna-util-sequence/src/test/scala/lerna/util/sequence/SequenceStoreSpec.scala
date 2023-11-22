@@ -1,5 +1,6 @@
 package lerna.util.sequence
 
+import akka.actor.ClassicActorSystemProvider
 import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.ActorRef
 import com.datastax.oss.driver.api.core.connection.{ ClosedConnectionException, HeartbeatException }
@@ -80,9 +81,37 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
     def spawnSequenceStore(
         nodeId: Int,
         incrementStep: Int,
+        cqlSessionProvider: CqlSessionProvider,
+    ): ActorRef[SequenceStore.Command] = {
+      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, cqlSessionProvider = cqlSessionProvider))
+    }
+
+    def spawnSequenceStore(
+        nodeId: Int,
+        incrementStep: Int,
         executor: CqlStatementExecutor,
     ): ActorRef[SequenceStore.Command] = {
-      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, executor))
+      spawn(SequenceStore(sequenceId, nodeId, incrementStep, cassandraConfig, executor = executor))
+    }
+  }
+
+  private trait CqlSessionProviderStubFixture {
+    private val connectFailureRef = new AtomicReference[Option[Throwable]](None)
+
+    val cqlSessionProviderStub: CqlSessionProvider = new CqlSessionProvider {
+      override def connect(
+          systemProvider: ClassicActorSystemProvider,
+          config: SequenceFactoryCassandraConfig,
+      ): Future[CqlSession] = {
+        connectFailureRef.getAndSet(None) match {
+          case Some(cause) => Future.failed(cause)
+          case None        => CqlSessionProvider.connect(systemProvider, config)
+        }
+      }
+    }
+
+    def failNextConnect(cause: Throwable): Unit = {
+      connectFailureRef.set(Option(cause))
     }
   }
 
@@ -252,6 +281,29 @@ class SequenceStoreSpec extends ScalaTestWithTypedActorTestKit(SequenceStoreSpec
       )
 
       testKit.stop(store2)
+    }
+
+    "セッションオープンに失敗した後、次の採番予約を最終的に処理する" in
+    new Fixture with CqlSessionProviderStubFixture {
+      // SequenceStore は例外によってセッションオープンに失敗する:
+      failNextConnect(new RuntimeException("expected exception for test"))
+
+      val store = spawnSequenceStore(nodeId = 1, incrementStep = 3, cqlSessionProvider = cqlSessionProviderStub)
+
+      // SequenceStore は、再起動した後、次の採番予約を処理する:
+      eventually {
+        store ! SequenceStore.InitialReserveSequence(
+          firstValue = 1,
+          reservationAmount = 101,
+          sequenceSubId,
+          testProbe.ref,
+        )
+        testProbe.expectMessage(
+          SequenceStore.InitialSequenceReserved(initialValue = 1, maxReservedValue = 301),
+        )
+      }
+
+      testKit.stop(store)
     }
 
     "継続不可能な例外によってセッション準備に失敗した後、次の採番予約を処理する" in new Fixture with CqlStatementExecutorStubFixture {
