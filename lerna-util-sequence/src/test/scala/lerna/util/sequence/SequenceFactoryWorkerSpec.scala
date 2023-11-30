@@ -638,6 +638,117 @@ class SequenceFactoryWorkerSpec
     }
   }
 
+  "SequenceFactoryWorker" when {
+
+    "notReady" should {
+
+      "一定期間アイドルであれば停止する" in {
+        val idleTimeout = 3.seconds
+        val storeProbe  = createTestProbe[SequenceStore.Command]()
+        val worker = spawn(
+          SequenceFactoryWorker(
+            sequenceId,
+            maxSequenceValue = 999,
+            firstValue = 3,
+            incrementStep = 10,
+            reservationAmount = 5,
+            storeProbe.ref,
+            idleTimeout = idleTimeout,
+            sequenceSubId,
+          ),
+        )
+
+        // SequenceFactoryWorker を notReady に留めるため、InitialReserveSequence に返信しない
+        storeProbe.expectMessageType[SequenceStore.InitialReserveSequence]
+        storeProbe.expectNoMessage()
+
+        // 一定期間アイドル状態であるため、SequenceFactoryWorker は停止する
+        locally {
+          val probe = createTestProbe[Nothing]()
+          probe.expectTerminated(worker, idleTimeout * 2)
+        }
+      }
+
+    }
+
+    "ready" should {
+
+      "一定期間アイドルであれば停止する" in {
+        val idleTimeout = 3.seconds
+        val storeProbe  = createTestProbe[SequenceStore.Command]()
+        val worker = spawn(
+          SequenceFactoryWorker(
+            sequenceId,
+            maxSequenceValue = 999,
+            firstValue = 3,
+            incrementStep = 10,
+            reservationAmount = 5,
+            storeProbe.ref,
+            idleTimeout = idleTimeout,
+            sequenceSubId,
+          ),
+        )
+
+        // SequenceFactoryWorker を ready にするため、初期化を実施する
+        initialize(storeProbe.expectMessageType[SequenceStore.InitialReserveSequence])
+        storeProbe.expectNoMessage()
+
+        // 一定期間アイドル状態であるため、SequenceFactoryWorker は停止する
+        locally {
+          val probe = createTestProbe[Nothing]()
+          probe.expectTerminated(worker, idleTimeout * 2)
+        }
+      }
+
+    }
+
+    "empty" should {
+
+      "一定期間アイドルであれば停止する" in {
+        val idleTimeout = 3.seconds
+        val storeProbe  = createTestProbe[SequenceStore.Command]()
+        val worker = spawn(
+          SequenceFactoryWorker(
+            sequenceId,
+            maxSequenceValue = 999,
+            firstValue = 3,
+            incrementStep = 10,
+            reservationAmount = 1,
+            storeProbe.ref,
+            idleTimeout = idleTimeout,
+            sequenceSubId,
+          ),
+        )
+
+        // SequenceFactoryWorker を ready にするため、初期化を実施する
+        initialize(
+          storeProbe.expectMessageType[SequenceStore.InitialReserveSequence],
+          prevMaxReservedValue = Option(BigInt(983)),
+        )
+        storeProbe.expectNoMessage()
+
+        // SequenceFactoryWorker を empty にするため、採番を実施する
+        locally {
+          val generateSequenceReplyProbe = createTestProbe[SequenceFactoryWorker.SequenceGenerated]()
+          worker ! SequenceFactoryWorker.GenerateSequence(sequenceSubId, generateSequenceReplyProbe.ref)
+          generateSequenceReplyProbe.expectMessage(SequenceFactoryWorker.SequenceGenerated(993, sequenceSubId))
+        }
+
+        // SequenceFactoryWorker を empty に留めるため ResetReserveSequence に返信しない
+        storeProbe.expectMessageType[SequenceStore.ResetReserveSequence]
+        storeProbe.expectNoMessage()
+
+        // 一定期間アイドル状態であるため、SequenceFactoryWorker は停止する
+        locally {
+          val probe = createTestProbe[Nothing]()
+          probe.expectTerminated(worker, idleTimeout * 2)
+        }
+      }
+
+    }
+
+  }
+
   private val incrementStep = 10
 
   // GenerateSequence が届いた場合の振る舞いの網羅テスト
