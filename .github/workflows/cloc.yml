@@ -11,8 +11,6 @@ on:
         required: false
   push:
     branches: [ main, feature/** ]
-  pull_request: # TODO remove me before merge
-    branches: [ main, feature/** ]
 
 jobs:
   cloc:
