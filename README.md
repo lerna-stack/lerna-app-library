@@ -37,7 +37,7 @@ The above modules are tested with OpenJDK8 and OpenJDK11.
 To use these library modules, you must add dependencies into your sbt project, add the following lines to your `build.sbt` file:
 
 ```scala
-val LernaVersion = "3.0.3"
+val LernaVersion = "3.0.4"
 
 libraryDependencies += "com.lerna-stack" %% "lerna-http"          % LernaVersion
 libraryDependencies += "com.lerna-stack" %% "lerna-log"           % LernaVersion
